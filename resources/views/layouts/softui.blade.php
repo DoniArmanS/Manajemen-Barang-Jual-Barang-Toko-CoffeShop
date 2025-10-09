@@ -61,6 +61,15 @@
           </a>
         </li>
 
+        <li class="nav-item">
+            <a class="nav-link {{ request()->is('kasir') ? 'active' : '' }}" href="{{ route('cashier') }}">
+              <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+                <i class="ni ni-badge text-dark text-sm opacity-10"></i>
+              </div>
+              <span class="nav-link-text ms-1">Cashier</span>
+            </a>
+          </li>
+
         {{-- Section: Example Pages --}}
         <li class="nav-item mt-3">
           <h6 class="ps-4 ms-2 text-uppercase text-xs font-weight-bolder opacity-6">Example Pages</h6>

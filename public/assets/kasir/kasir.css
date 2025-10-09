@@ -1,0 +1,129 @@
+.kasir-body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.main-content {
+    margin-left: 0;
+    transition: all 0.3s;
+}
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    margin-bottom: 20px;
+}
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #eaeaea;
+    font-weight: 600;
+    padding: 15px 20px;
+    border-radius: 10px 10px 0 0 !important;
+}
+.btn-primary {
+    background-color: #4361ee;
+    border-color: #4361ee;
+}
+.btn-success {
+    background-color: #06d6a0;
+    border-color: #06d6a0;
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+.badge {
+    font-size: 0.75rem;
+}
+.search-box {
+    position: relative;
+}
+.search-box i {
+    position: absolute;
+    left: 15px;
+    top: 12px;
+    color: #6c757d;
+}
+.search-box input {
+    padding-left: 40px;
+}
+.product-item {
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.product-item:hover {
+    background-color: #f8f9fa;
+    border-color: #4361ee;
+}
+.cart-item {
+    border-bottom: 1px solid #eaeaea;
+    padding: 10px 0;
+}
+.cart-item:last-child {
+    border-bottom: none;
+}
+.quantity-control {
+    display: flex;
+    align-items: center;
+}
+.quantity-control button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.quantity-control input {
+    width: 50px;
+    text-align: center;
+    margin: 0 5px;
+}
+.receipt {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+}
+.receipt-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 1px dashed #333;
+    padding-bottom: 10px;
+}
+.receipt-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.receipt-total {
+    border-top: 1px dashed #333;
+    padding-top: 10px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+.payment-methods .form-check {
+    margin-bottom: 10px;
+}
+.stats-card {
+    text-align: center;
+    padding: 15px;
+}
+.stats-card i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #4361ee;
+}
+.stats-card h4 {
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+.stats-card p {
+    color: #6c757d;
+    margin-bottom: 0;
+}
