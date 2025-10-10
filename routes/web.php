@@ -11,3 +11,7 @@ Route::get('/inventory', function () {
 Route::get('/kasir', function () {
     return view('kasir.index');
 })->name('cashier');
+
+Route::get('/dashboard', function () {
+    return view('dashboard.index');
+})->name('dashboard');

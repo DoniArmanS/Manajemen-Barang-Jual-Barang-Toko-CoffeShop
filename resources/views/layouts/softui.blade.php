@@ -30,7 +30,7 @@
 
         {{-- Dashboard --}}
         <li class="nav-item">
-          <a class="nav-link {{ request()->is('/') ? 'active' : '' }}" href="{{ url('/') }}">
+          <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ url('dashboard') }}">
             <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
               <i class="ni ni-tv-2 text-primary text-sm opacity-10"></i>
             </div>
