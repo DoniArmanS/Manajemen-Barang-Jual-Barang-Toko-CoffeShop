@@ -1,0 +1,15 @@
+/* badge status */
+.inv-badge { font-weight: 600; padding:.35rem .6rem; border-radius:12px; }
+.inv-badge.ok  { background:#e9f7ef; color:#198754; }
+.inv-badge.low { background:#fff3cd; color:#b88900; }
+.inv-badge.out { background:#fde2e1; color:#c0392b; }
+
+/* progress stok */
+.stock-pct { height: 4px; border-radius: 6px; overflow: hidden; background: #edf2f7; }
+.stock-pct .bar { height: 100%; }
+
+/* table tweaks */
+.table td, .table th { vertical-align: middle; }
+.btn-group [data-filter].active {
+  background:#344767; color:#fff; border-color:#344767;
+}

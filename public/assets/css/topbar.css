@@ -1,0 +1,19 @@
+/* Brand top-left di navbar */
+.brand-chip {
+  display: flex; align-items: center; gap: .75rem;
+}
+.brand-chip .chip-icon {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+}
+.brand-chip .chip-title {
+  line-height: 1.1;
+}
+.brand-chip .chip-sub {
+  font-size: .75rem; color: #8392AB; /* warna text-secondary soft ui */
+}
+
+/* Breadcrumb tipis */
+.navbar .breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+  content: "›"; color: #8392AB;
+}
