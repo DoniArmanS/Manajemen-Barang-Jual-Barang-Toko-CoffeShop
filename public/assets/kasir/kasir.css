@@ -1,0 +1,66 @@
+/* ====== BASE ====== */
+.kasir-body{background:#f8f9fa;font-family:Inter,"Segoe UI",sans-serif}
+.card{border:none;border-radius:14px;box-shadow:0 8px 20px rgba(2,6,23,.06)}
+.card-header{background:#fff;border-bottom:1px solid #eef0f3;font-weight:600;padding:14px 18px;border-radius:14px 14px 0 0!important}
+.btn-dark{background:#0f172a;border-color:#0f172a;border-radius:12px;font-weight:600}
+.btn-outline-secondary{border-radius:12px}
+.btn:focus{box-shadow:0 0 0 .15rem rgba(15,23,42,.12)}
+
+/* ====== DROPDOWN FIX ====== */
+/* hapus caret bawaan & fokus kotak */
+.dropdown-toggle::after{display:none!important}
+.dropdown-toggle,
+.custom-dropdown{position:relative;padding-right:2rem!important;outline:none!important;box-shadow:none!important}
+.custom-dropdown::after{
+  content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-48%);
+  font-size:.9rem;color:#475569;pointer-events:none
+}
+.custom-dropdown:focus,
+.dropdown-toggle:focus{box-shadow:none!important;border-color:#9aa6b2!important}
+.dropdown-menu{z-index:1053;transform:translateY(6px);border-radius:10px;box-shadow:0 8px 18px rgba(0,0,0,.08)}
+
+/* ====== PRODUCT ====== */
+.product-card{border:1px solid rgba(2,6,23,.08);border-radius:14px;background:#fff;transition:transform .08s,box-shadow .08s}
+.product-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(2,6,23,.08)}
+.product-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px}
+.badge-chip{font-size:.72rem;border-radius:999px;padding:.2rem .55rem}
+
+/* ====== CART ====== */
+#cartList .list-group-item{border:none;border-bottom:1px dashed #e3e8ef;padding:10px 0}
+#cartList .list-group-item:last-child{border-bottom:none}
+.empty-state{border:1px dashed #e1e7ef;border-radius:10px;padding:1rem;background:#fbfdff}
+
+/* Qty — tombol & angka BESAR, sejajar */
+.qty-wrap{display:flex;align-items:center;gap:.5rem}
+.qty-btn,.btn-delete-item{
+  width:44px;height:44px;border-radius:10px!important;display:flex;align-items:center;justify-content:center;
+  font-size:1.15rem;font-weight:700;line-height:1;padding:0!important
+}
+.qty-value{
+  min-width:44px;height:44px;border:1px solid #cbd5e1;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:1.15rem;color:#0f172a;background:#fff
+}
+
+/* ====== RECEIPT (kertas 80mm) ====== */
+#receiptPaper{width:72mm;margin:0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;color:#222}
+#receiptPaper .r-head{text-align:center}
+#receiptPaper .r-title{font-weight:800}
+#receiptPaper .r-meta{font-size:.8rem;color:#6b7280}
+#receiptPaper table{width:100%;border-collapse:collapse;margin-top:.5rem}
+#receiptPaper th,#receiptPaper td{font-size:.9rem;padding:2px 0}
+#receiptPaper th{border-bottom:1px dashed #cbd5e1;text-align:left}
+#receiptPaper .r-hr{border-top:1px dashed #cbd5e1;margin:.35rem 0}
+#receiptPaper .r-thanks{text-align:center;margin-top:.4rem;font-size:.8rem;color:#6b7280}
+
+/* ====== PRINT ONLY ====== */
+@media print{
+  @page{size:80mm auto;margin:0}                     /* hilangin margin putih printer */
+  html,body{width:80mm;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body *{visibility:hidden!important}
+  #printRoot,#printRoot *{visibility:visible!important}  /* HANYA konten ini yang dicetak */
+  #printRoot{position:absolute;inset:0;margin:0;padding:0}
+  .modal-backdrop{display:none!important}
+}
+
+
