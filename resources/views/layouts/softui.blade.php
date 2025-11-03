@@ -98,10 +98,29 @@
           </div>
         </div>
 
-        <div class="ms-auto d-flex align-items-center gap-2">
-          <span class="badge bg-gradient-dark text-xxs">v0.1</span>
-          <span class="text-sm text-secondary d-none d-md-inline">{{ now()->format('D, d M Y') }}</span>
-        </div>
+        <div class="ms-auto d-flex align-items-center">
+  <div class="clock-chip">
+    <i class="ni ni-time-alarm clock-icon"></i>
+    <span id="clock" class="clock-text"></span>
+  </div>
+</div>
+
+@push('scripts')
+<script>
+  function updateClock() {
+    const d = new Date();
+    const formatted = d.toLocaleString('id-ID', {
+      weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const el = document.getElementById('clock');
+    if (el) el.textContent = formatted;
+  }
+  updateClock();
+  setInterval(updateClock, 60 * 1000);
+</script>
+@endpush
+
       </div>
     </nav>
 
