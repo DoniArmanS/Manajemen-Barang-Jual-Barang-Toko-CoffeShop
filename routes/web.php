@@ -38,7 +38,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Riwayat → resources/views/riwayat/index.blade.php
     Route::get('/riwayat', function () {
-        return view('riwayat.index');
+        return view('riwayat.riwayat');
     })->name('riwayat');
 });
 
