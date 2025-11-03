@@ -11,16 +11,37 @@
   <link rel="stylesheet" href="{{ asset('assets/css/nucleo-icons.css') }}">
   <link rel="stylesheet" href="{{ asset('assets/css/nucleo-svg.css') }}">
   <link rel="stylesheet" href="{{ asset('assets/css/topbar.css') }}">
+  {{-- kecilkan sentuhan dropdown agar tampak sama persis seperti brand link --}}
+  <style>
+    .sidenav-header .dropdown-toggle::after { display:none; }          /* hilangkan caret */
+    .sidenav-header .navbar-brand { padding:0; line-height:1; }        /* samakan tinggi */
+    .sidenav-header .dropdown-menu { min-width:180px; }                /* lebar menu */
+  </style>
   @stack('styles')
 </head>
 <body class="g-sidenav-show bg-gray-100">
 
   {{-- SIDEBAR --}}
   <aside class="sidenav navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-3" id="sidenav-main">
-    <div class="sidenav-header">
-      <a class="navbar-brand m-0" href="{{ url('/') }}">
-        <span class="ms-1 font-weight-bold">CoffeShop Admin</span>
-      </a>
+    <div class="sidenav-header d-flex align-items-center">
+      {{-- BRAND menjadi dropdown, tampilan tetap sejajar dengan sidebar --}}
+      <div class="dropdown">
+        <a href="#" class="navbar-brand m-0 d-inline-flex align-items-center dropdown-toggle ms-4 my-1"
+           id="sidebarBrandDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="ms-1 font-weight-bold">CoffeShop Admin</span>
+        </a>
+        <ul class="dropdown-menu shadow" aria-labelledby="sidebarBrandDropdown">
+          {{-- Tambah item lain di sini jika perlu (Profile/Settings) --}}
+          <li>
+            <form method="POST" action="{{ route('logout') }}">
+              @csrf
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="ni ni-user-run me-2"></i> Logout
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
     </div>
     <hr class="horizontal dark mt-0">
 
@@ -98,28 +119,29 @@
           </div>
         </div>
 
+        {{-- JAM — TIDAK DIUBAH --}}
         <div class="ms-auto d-flex align-items-center">
-  <div class="clock-chip">
-    <i class="ni ni-time-alarm clock-icon"></i>
-    <span id="clock" class="clock-text"></span>
-  </div>
-</div>
+          <div class="clock-chip">
+            <i class="ni ni-time-alarm clock-icon"></i>
+            <span id="clock" class="clock-text"></span>
+          </div>
+        </div>
 
-@push('scripts')
-<script>
-  function updateClock() {
-    const d = new Date();
-    const formatted = d.toLocaleString('id-ID', {
-      weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-    const el = document.getElementById('clock');
-    if (el) el.textContent = formatted;
-  }
-  updateClock();
-  setInterval(updateClock, 60 * 1000);
-</script>
-@endpush
+        @push('scripts')
+        <script>
+          function updateClock() {
+            const d = new Date();
+            const formatted = d.toLocaleString('id-ID', {
+              weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            });
+            const el = document.getElementById('clock');
+            if (el) el.textContent = formatted;
+          }
+          updateClock();
+          setInterval(updateClock, 60 * 1000);
+        </script>
+        @endpush
 
       </div>
     </nav>
