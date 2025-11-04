@@ -1,10 +1,8 @@
-// ===================
-// Dashboard Coffeeshop (DB-aware / localStorage-aware)
-// ===================
-
+// Dashboard (DB-aware / localStorage-aware) + Activity feed harian
 const KEY_TRANSACTIONS = 'coffeeshop_transactions_v1';
-const KEY_INVENTORY_ALIASES = ['inv_items_v1', 'coffeeshop_inventory_v1']; // <-- sinkron dengan halaman Inventory
+const KEY_INVENTORY_ALIASES = ['inv_items_v1', 'coffeeshop_inventory_v1'];
 const KEY_CASH = 'coffeeshop_cash_v1';
+const ACT_PREFIX = 'activity_'; // sama dengan inventory.js
 
 const $  = (sel, ctx=document) => ctx.querySelector(sel);
 
@@ -14,10 +12,9 @@ let chartInventory = null;
 let INVENTORY_EMPTY_CHART = true;
 let LAST_DB_SUMMARY = { total: 0, ready: 0, low: 0, out: 0 };
 
-// ----- Storage helpers -----
+// -------- helpers
 function loadTransactions(){ try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS) || '[]'); } catch { return []; } }
 function loadInventoryLS(){
-  // baca dari key yang dipakai halaman Inventory
   for (const k of KEY_INVENTORY_ALIASES) {
     const raw = localStorage.getItem(k);
     if (raw) { try { return JSON.parse(raw); } catch {} }
@@ -26,15 +23,15 @@ function loadInventoryLS(){
 }
 function loadCash(){ try { return parseFloat(localStorage.getItem(KEY_CASH) || '1000000'); } catch { return 1000000; } }
 
-function log(msg){
-  const li = document.createElement('li');
-  li.className = 'mb-2 pb-2 border-bottom';
-  li.innerHTML = `<small class="text-muted">${new Date().toLocaleString('id-ID')}</small><br>${msg}`;
-  const ul = document.getElementById('log');
-  if (ul) { ul.prepend(li); if (ul.children.length > 15) ul.removeChild(ul.lastChild); }
+function todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function actKey(){ return ACT_PREFIX + todayKey(); }
+function loadActivityLS(){
+  try { return JSON.parse(localStorage.getItem(actKey()) || '[]'); } catch { return []; }
 }
 
-// ----- Utility -----
 function formatRupiah(amount){
   return new Intl.NumberFormat('id-ID', { style:'currency', currency:'IDR', minimumFractionDigits:0 }).format(amount);
 }
@@ -50,13 +47,9 @@ function filterByPeriod(transactions){
   if (CURRENT_PERIOD === 'year') return transactions.filter(t => isThisYear(t.datetime));
   return transactions;
 }
-function statusOf(it){
-  if((it.stock|0) <= 0) return 'out';
-  if((it.stock|0) <= (parseInt(it.min)||0)) return 'low';
-  return 'ok';
-}
+function statusOf(it){ if((it.stock|0) <= 0) return 'out'; if((it.stock|0) <= (parseInt(it.min)||0)) return 'low'; return 'ok'; }
 
-// ----- Charts init -----
+// -------- charts init
 function initCharts(){
   const ctxFinancial = document.getElementById('chartFinancial');
   if(ctxFinancial){
@@ -92,7 +85,7 @@ function initCharts(){
   }
 }
 
-// ----- Charts update -----
+// -------- charts update
 function updateFinancialChart(){
   if(!chartFinancial) return;
   const tx = filterByPeriod(loadTransactions());
@@ -145,7 +138,7 @@ function renderInventoryDonut(sum){
   chartInventory.update();
 }
 
-// ----- Stats -----
+// -------- top stats
 function updateTopStats(){
   const tx = filterByPeriod(loadTransactions());
   const income = tx.filter(t=>t.type==='income').reduce((s,t)=>s+(+t.amount||0),0);
@@ -171,7 +164,7 @@ function writeInventoryCounters(sum){
   set('statInventoryOut',   sum.out   ?? 0);
 }
 
-// ----- DB Sync -----
+// -------- DB sync (optional)
 async function fetchInventorySummaryFromDB(){
   if (!window.DASHBOARD_SUMMARY_URL) throw new Error('DASHBOARD_SUMMARY_URL not set');
   const res = await fetch(window.DASHBOARD_SUMMARY_URL, { cache:'no-store' });
@@ -179,7 +172,71 @@ async function fetchInventorySummaryFromDB(){
   return await res.json(); // { total, ready, low, out }
 }
 
-// ----- Render orchestrator -----
+// -------- Activity feed
+async function fetchActivities(){
+  const ul = document.getElementById('log');
+  if (!ul) return;
+
+  if (window.USE_DB) {
+    // versi server
+    try {
+      const res = await fetch("/dashboard/activity?limit=50", { cache:'no-store' });
+      const data = await res.json();
+      ul.innerHTML = '';
+      for (const a of data) {
+        const li = document.createElement('li');
+        li.className = 'mb-2 pb-2 border-bottom';
+        const when = new Date(a.created_at).toLocaleString('id-ID');
+        const qty  = (a.qty_change !== null && a.qty_change !== undefined) ? ` (${a.qty_change>0?'+':''}${a.qty_change})` : '';
+        li.innerHTML = `<small class="text-muted">${when}</small><br>
+          <strong>${a.action.toUpperCase()}</strong> — ${a.item_name || a.source}${qty}${a.note ? ` — ${a.note}` : ''}`;
+        ul.appendChild(li);
+      }
+    } catch (e) {
+      console.error('fetchActivities failed', e);
+    }
+    return;
+  }
+
+  // versi localStorage (reset otomatis per hari via key activity_YYYY-MM-DD)
+  const list = loadActivityLS(); // newest first
+  ul.innerHTML = '';
+  for (const a of list) {
+    const when = new Date(a.ts).toLocaleString('id-ID');
+    const qty  = (a.qty_change===0 || a.qty_change) ? ` (${a.qty_change>0?'+':''}${a.qty_change})` : '';
+    const li = document.createElement('li');
+    li.className = 'mb-2 pb-2 border-bottom';
+    li.innerHTML = `<small class="text-muted">${when}</small><br>
+      <strong>${a.action.toUpperCase()}</strong> — ${a.item_name || 'Item'}${qty}${a.note ? ` — ${a.note}` : ''}`;
+    ul.appendChild(li);
+  }
+}
+
+// Export CSV activity (DB -> hit endpoint, LS -> generate CSV)
+function exportActivity(){
+  if (window.USE_DB) {
+    window.open('/dashboard/activity/export', '_blank');
+    return;
+  }
+  const list = loadActivityLS().slice().reverse(); // lama -> baru
+  const rows = [['datetime','action','item_name','qty_change','note']];
+  for (const a of list){
+    rows.push([
+      new Date(a.ts).toISOString(),
+      a.action,
+      a.item_name || '',
+      (a.qty_change===0 || a.qty_change) ? a.qty_change : '',
+      (a.note||'').replace(/\r?\n/g,' ')
+    ]);
+  }
+  const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `activity_${todayKey()}.csv`;
+  a.click();
+}
+
+// -------- render orchestrator
 function renderLocalStorage(){
   const items = loadInventoryLS();
   let ready=0, low=0, out=0;
@@ -205,20 +262,20 @@ function renderAll(){
   if (window.USE_DB) renderDB(); else renderLocalStorage();
 }
 
-// ----- Events -----
+// -------- events
 document.addEventListener('DOMContentLoaded', () => {
   initCharts();
 
   $('#periodFilter')?.addEventListener('change', e => {
     CURRENT_PERIOD = e.target.value;
     renderAll();
-    log(`📊 Filter periode diubah ke: ${e.target.options[e.target.selectedIndex].text}`);
   });
 
   // Render awal
   renderAll();
+  fetchActivities();
 
-  // Mode DB: tarik berkala
+  // tarik ringkasan DB berkala (kalau USE_DB)
   if (window.USE_DB) {
     const pull = async () => {
       try {
@@ -232,9 +289,18 @@ document.addEventListener('DOMContentLoaded', () => {
     pull();
     setInterval(pull, 15000);
   } else {
-    // Mode localStorage: dengarkan perubahan storage (tab lain)
+    // listen perubahan dari halaman Inventory (ping via localStorage)
     window.addEventListener('storage', (ev) => {
-      if (KEY_INVENTORY_ALIASES.includes(ev.key)) renderLocalStorage();
+      if (KEY_INVENTORY_ALIASES.includes(ev.key) || ev.key === 'activity_ping' || ev.key === actKey()) {
+        renderLocalStorage();
+        fetchActivities();
+      }
     });
   }
+
+  // Export CSV activity (otomatis pilih DB/LS)
+  document.getElementById('btnExportActivity')?.addEventListener('click', exportActivity);
+
+  // Poll activity tiap 5 detik supaya live
+  setInterval(fetchActivities, 5000);
 });

@@ -139,11 +139,23 @@
       </div>
     </div>
     <div class="col-md-8">
-      <div class="card">
-        <div class="card-header pb-0"><h6 class="text-uppercase text-secondary text-xxs font-weight-bolder">AKTIVITAS TERAKHIR</h6></div>
-        <div class="card-body"><ul id="log" class="mb-0 small" style="max-height: 300px; overflow-y: auto;"></ul></div>
+  <div class="card">
+    <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+      <h6 class="text-uppercase text-secondary text-xxs font-weight-bolder mb-0">AKTIVITAS TERAKHIR</h6>
+      <div class="d-flex gap-2">
+        <button id="btnExportActivity" class="btn btn-sm btn-outline-secondary">
+          Export CSV
+        </button>
       </div>
     </div>
+    <div class="card-body">
+      <ul id="log" class="mb-0 small" style="max-height: 300px; overflow-y: auto;"></ul>
+    </div>
+  </div>
+</div>
+
+
+
   </div>
 </div>
 @endsection

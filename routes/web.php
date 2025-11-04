@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardActivityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,26 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard/inventory-summary', [DashboardController::class, 'inventorySummary'])
     ->name('dashboard.inventory.summary');
+
+                // Activity JSON (dashboard)
+            Route::get('/dashboard/activity', [DashboardActivityController::class, 'index'])
+                ->name('dashboard.activity');
+
+            // Export CSV activity harian
+            Route::get('/dashboard/activity/export', [DashboardActivityController::class, 'export'])
+                ->name('dashboard.activity.export');
+
+            // Notes harian
+            Route::get('/dashboard/notes', [DashboardActivityController::class, 'getNote'])
+                ->name('dashboard.notes.get');
+            Route::post('/dashboard/notes', [DashboardActivityController::class, 'saveNote'])
+                ->name('dashboard.notes.save');
+            Route::post('/dashboard/notes/import', [DashboardActivityController::class, 'importNoteCsv'])
+                ->name('dashboard.notes.import');
+
+            // Endpoint untuk Inventory mengirim aktivitas
+            Route::post('/activity', [DashboardActivityController::class, 'store'])
+                ->name('activity.store');
 
     /**
      * INVENTORY (DB)
