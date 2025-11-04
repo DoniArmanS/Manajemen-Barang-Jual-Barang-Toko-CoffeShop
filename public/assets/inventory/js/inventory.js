@@ -171,13 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // seed pertama kali
-  if(load().length===0){
-    save([
-      {id:1,name:'Biji Kopi Arabica',sku:'BEAN-AR',category:'Bahan',stock:12,min:5,unit:'kg',note:'Gudang A'},
-      {id:2,name:'Susu Full Cream',sku:'MILK-FC',category:'Bahan',stock:4,min:6,unit:'L',note:'Perlu restock'},
-      {id:3,name:'Gelas Cup 12oz',sku:'CUP-12',category:'Perlengkapan',stock:0,min:50,unit:'pcs',note:''},
-    ]);
-  }
+  
 
   render();
 });

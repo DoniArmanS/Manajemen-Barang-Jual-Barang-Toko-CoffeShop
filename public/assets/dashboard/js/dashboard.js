@@ -331,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // Seed data pertama kali
+  if (!window.USE_DB && loadTransactions().length === 0) {
   if(loadTransactions().length === 0){
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString();
@@ -351,7 +352,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ]);
     log('🎉 Data demo transaksi berhasil dimuat');
   }
+}
   
+if (!window.USE_DB && loadInventory().length === 0) {
   if(loadInventory().length === 0){
     saveInventory([
       {id: 1, name: 'Biji Kopi Arabica', sku: 'BEAN-AR', category: 'Bahan', stock: 12, min: 5, unit: 'kg'},
@@ -364,6 +367,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ]);
     log('📦 Data demo inventory berhasil dimuat');
   }
+}
+  
+  
   
   // Initial render
   render();
