@@ -25,7 +25,11 @@ Route::middleware('auth')->group(function () {
      * diisi dari database. Namun kalau kamu masih ingin pakai view statis, tinggal
      * ganti ke Route::view('/dashboard', 'dashboard.index')->name('dashboard');
      */
-    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->name('dashboard');
+
+    Route::get('/dashboard/inventory-summary', [DashboardController::class, 'inventorySummary'])
+    ->name('dashboard.inventory.summary');
 
     /**
      * INVENTORY (DB)
@@ -37,12 +41,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
     Route::post('/inventory/{item}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
-
-
-    // ====== API JSON untuk Dashboard ======
-    // Ringkasan inventory (ready/low/out/total)
-    Route::get('/dashboard/inventory-summary', [InventoryController::class, 'summary'])
-        ->name('dashboard.inventory.summary');
 
     /**
      * KASIR & RIWAYAT (sementara view statis kamu).

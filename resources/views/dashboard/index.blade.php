@@ -35,9 +35,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h6 class="mb-0">Menu Cepat</h6>
-        </div>
+        <div class="card-header"><h6 class="mb-0">Menu Cepat</h6></div>
         <div class="card-body">
           <div class="row g-3">
             <div class="col-md-3">
@@ -153,38 +151,16 @@
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-{{-- === FLAG: pakai DB, bukan localStorage === --}}
-<script>window.USE_DB = true;</script>
-
-{{-- === JS Dashboard kamu yang lama tetap dipakai === --}}
-<script src="{{ asset('assets/dashboard/js/dashboard.js') }}"></script>
-
-{{-- === Tambahan kecil: ambil ringkasan inventory dari DB & suntik ke chart/angka === --}}
 <script>
-  async function refreshInventoryFromDB() {
-    try {
-      const res = await fetch("{{ route('dashboard.inventory.summary') }}", { cache: 'no-store' });
-      const s = await res.json(); // {total,ready,low,out}
+  // === PILIH MODE ===
+  // true  = Dashboard & donut ambil data dari DB (endpoint Laravel)
+  // false = Dashboard sinkron dengan localStorage (mengikuti halaman Inventory-mu sekarang)
+  window.USE_DB = false; // <-- ganti ke true jika kamu mau mode DB
 
-      // Update angka ringkasan
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('statInventoryTotal', s.total ?? 0);
-      set('statInventoryLow',   s.low   ?? 0);
-      set('statInventoryOut',   s.out   ?? 0);
-
-      // Update doughnut chart bila ada
-      if (window.chartInventory && chartInventory.data && chartInventory.data.datasets?.[0]) {
-        chartInventory.data.datasets[0].data = [s.ready ?? 0, s.low ?? 0, s.out ?? 0];
-        chartInventory.update();
-      }
-    } catch(e) {
-      console.error('Gagal ambil summary inventory:', e);
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    // Setelah dashboard.js selesai init charts, tarik data DB
-    setTimeout(refreshInventoryFromDB, 200);
-  });
+  // Untuk mode DB: pastikan route name PERSIS ini di routes/web.php
+  // Route::get('/dashboard/inventory-summary', [DashboardController::class, 'inventorySummary'])->name('dashboard.inventory.summary');
+  window.DASHBOARD_SUMMARY_URL = "{{ route('dashboard.inventory.summary') }}";
 </script>
+
+<script src="{{ asset('assets/dashboard/js/dashboard.js') }}"></script>
 @endpush
