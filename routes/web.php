@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardActivityController;
-
+use App\Http\Controllers\CashierManageController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -51,6 +51,11 @@ Route::middleware('auth')->group(function () {
             // Endpoint untuk Inventory mengirim aktivitas
             Route::post('/activity', [DashboardActivityController::class, 'store'])
                 ->name('activity.store');
+
+            Route::prefix('kasir')->group(function () {
+            Route::get('/',        [CashierController::class,      'index'])->name('cashier');          // /kasir
+            Route::get('/manage',  [CashierManageController::class, 'index'])->name('cashier.manage');   // /kasir/manage
+        });
 
     /**
      * INVENTORY (DB)

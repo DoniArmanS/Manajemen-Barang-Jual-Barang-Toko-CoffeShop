@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ $title }}</title>
 
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
   {{-- Soft UI core CSS --}}
   <link rel="stylesheet" href="{{ asset('assets/css/soft-ui-dashboard.min.css') }}">
   <link rel="stylesheet" href="{{ asset('assets/css/nucleo-icons.css') }}">
@@ -70,6 +72,15 @@
               <i class="ni ni-badge text-dark text-sm opacity-10"></i>
             </div>
             <span class="nav-link-text ms-1">Cashier</span>
+          </a>
+        </li>
+
+           <li class="nav-item">
+          <a class="nav-link {{ request()->routeIs('cashier.manage') ? 'active' : '' }}" href="{{ route('cashier.manage') }}">
+            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+              <i class="ni ni-settings-gear-65 text-warning text-sm opacity-10"></i>
+            </div>
+            <span class="nav-link-text ms-1">Cashier Management</span>
           </a>
         </li>
 

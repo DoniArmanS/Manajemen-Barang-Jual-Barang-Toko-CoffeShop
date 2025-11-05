@@ -4,6 +4,7 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('assets/kasir/kasir.css') }}?v={{ time() }}">
 @endpush
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 @section('content')
 <div class="container-fluid py-4 kasir-body">
