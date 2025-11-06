@@ -1,7 +1,8 @@
+// public/assets/kasir/inventory.js
 // Inventory (no DB) — localStorage + Activity harian (persist) + ping Dashboard
 (function(){
-  const KEY_ITEMS = 'inv_items_v1';          // dipakai dashboard juga
-  const ACT_PREFIX = 'activity_';            // activity harian per tanggal
+  const KEY_ITEMS  = 'inv_items_v1';   // dipakai dashboard juga
+  const ACT_PREFIX = 'activity_';      // activity harian per tanggal
   const $  = (sel, ctx=document) => ctx.querySelector(sel);
   const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 
@@ -26,17 +27,22 @@
   function getById(id){ return loadItems().find(x=>x.id===id); }
 
   // ========= Activity harian (persist di localStorage) =========
-  function loadActivity(){
+  // Ambil SEMUA activity harian (lintas modul)
+  function loadActivityAll(){
     try { return JSON.parse(localStorage.getItem(actKey()) || '[]'); } catch { return []; }
   }
+  // Filter khusus INVENTORY (yang tampil di panel ini)
+  function invActivities(){
+    const all = loadActivityAll();
+    return all.filter(a => a.source === 'inventory' || a.source === undefined); // entry lama tanpa source dianggap inventory
+  }
   function saveActivity(list){
-    // batasi max 1000 entries per hari biar nggak bengkak
     if (list.length > 1000) list = list.slice(-1000);
     localStorage.setItem(actKey(), JSON.stringify(list));
     pingDashboard();
   }
   function pushActivity({action, item_name, qty_change=null, note='', meta={}}){
-    const list = loadActivity();
+    const list = loadActivityAll(); // gabungkan dengan activity modul lain
     list.unshift({
       ts: Date.now(),
       source: 'inventory',
@@ -45,13 +51,89 @@
     saveActivity(list);
   }
 
+  // sisipkan style kecil untuk scrollbar & toolbar catatan (sekali di-load)
+  function injectStylesOnce(){
+  if (document.getElementById('inv-log-styles')) return;
+  const css = `
+    /* host utk posisi absolute toolbar */
+    .log-host { position: relative; }
+
+    /* toolbar export: mengambang kanan-atas, tidak mem-push konten */
+    .log-toolbar {
+      position: absolute;
+      top: 17px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin: 0;            /* no extra space */
+      padding: 0;
+      background: transparent;
+      z-index: 1;
+    }
+    #btnInventoryActivityExport { padding: .25rem .5rem; }
+
+    /* list catatan: kalau >5 item jadi scroll */
+    #log.scroll {
+      max-height: 240px;        /* ~5-6 baris */
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+    #log.scroll::-webkit-scrollbar { width: 6px; }
+    #log.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 3px; }
+  `;
+  const style = document.createElement('style');
+  style.id = 'inv-log-styles';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
+  // buat toolbar export CSV di atas list catatan (kalau belum ada)
+  function ensureLogToolbar(){
+  const ul = document.getElementById('log');
+  if (!ul) return;
+
+  // posisikan di dalam card-body (kanan-atas)
+  const host = ul.closest('.card-body') || ul.parentElement;
+  if (!host) return;
+  host.classList.add('log-host');
+
+  // cari toolbar kalau sudah ada
+  let toolbar = host.querySelector('.log-toolbar');
+  if (!toolbar){
+    toolbar = document.createElement('div');
+    toolbar.className = 'log-toolbar';
+    host.insertBefore(toolbar, host.firstChild); // paling atas dalam card body
+  }
+
+  // tombol export (sekali saja)
+  let btn = document.getElementById('btnInventoryActivityExport');
+  if (!btn){
+    btn = document.createElement('button');
+    btn.id = 'btnInventoryActivityExport';
+    btn.type = 'button';
+    btn.className = 'btn btn-sm btn-outline-secondary';
+    btn.textContent = 'EXPORT CSV';
+    btn.addEventListener('click', exportActivityCSV);
+    toolbar.appendChild(btn);
+  }
+}
+
+
   // tampilan catatan di panel “CATATAN”
   function renderActivityList(){
+    injectStylesOnce();
+    ensureLogToolbar();
+
     const ul = document.getElementById('log');
     if (!ul) return;
+
+    const list = invActivities();      // hanya inventory
     ul.innerHTML = '';
-    const list = loadActivity();              // newest first (karena unshift)
-    const show = list.slice(0, 200);          // render sampai 200 item (scroll kebawah sisanya)
+    // toggle scrollbar bila > 5
+    ul.classList.toggle('scroll', list.length > 5);
+
+    const show = list.slice(0, 200);   // render max 200 item
     for (const a of show){
       const when = new Date(a.ts).toLocaleString('id-ID');
       const qty  = (a.qty_change===0 || a.qty_change)
@@ -62,6 +144,26 @@
         <strong>${a.action.toUpperCase()}</strong> — ${a.item_name||'Item'}${qty}${a.note?` — ${a.note}`:''}`;
       ul.appendChild(li);
     }
+  }
+
+  // ========= Export CSV untuk Activity harian dari halaman Inventory =========
+  function exportActivityCSV(){
+    const list = invActivities();
+    const rows = [['datetime','action','item_name','qty_change','note']];
+    for (const a of list.slice().reverse()){ // paling lama → paling baru
+      rows.push([
+        new Date(a.ts).toISOString(),
+        a.action,
+        a.item_name || '',
+        (a.qty_change===0 || a.qty_change) ? a.qty_change : '',
+        (a.note||'').replace(/\r?\n/g,' ')
+      ]);
+    }
+    const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download = `activity_${todayKey()}_inventory.csv`;
+    a.click();
   }
 
   // ========= Ping Dashboard (supaya donut & activity ikut update tanpa reload) =========
@@ -191,28 +293,10 @@
     set('statOut', out);
   }
 
-  // ========= Export CSV untuk Activity harian dari halaman Inventory (opsional tombol) =========
-  function exportActivityCSV(){
-    const list = loadActivity();
-    const rows = [['datetime','action','item_name','qty_change','note']];
-    for (const a of list.slice().reverse()){ // paling lama ke paling baru
-      rows.push([
-        new Date(a.ts).toISOString(),
-        a.action,
-        a.item_name || '',
-        (a.qty_change===0 || a.qty_change) ? a.qty_change : '',
-        (a.note||'').replace(/\r?\n/g,' ')
-      ]);
-    }
-    const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download = `activity_${todayKey()}.csv`;
-    a.click();
-  }
-
   // ========= Events =========
   document.addEventListener('DOMContentLoaded', () => {
+    injectStylesOnce();
+
     // tambah/edit
     $('#formItem')?.addEventListener('submit', e=>{
       e.preventDefault();
@@ -275,7 +359,7 @@
       i.click();
     });
 
-    // (opsional) tombol export activity di halaman inventory jika kamu tambahkan btn dengan id ini
+    // tombol export activity (kalau kamu sudah taruh di HTML)
     document.getElementById('btnInventoryActivityExport')?.addEventListener('click', exportActivityCSV);
 
     // render awal

@@ -7,6 +7,81 @@
   .mgmt-card{border:1px solid rgba(2,6,23,.08);border-radius:14px;overflow:hidden;background:#fff}
   .mgmt-img{width:100%;aspect-ratio:1/1;object-fit:cover}
   .price{font-weight:700}
+
+  /* ===== Ingredient toolbar ===== */
+  .ing-toolbar .form-select,.ing-toolbar .form-control{min-width:0}
+  .ing-toolbar .form-select{border-radius:10px}
+  .ing-toolbar .form-control{border-radius:10px}
+  .ing-toolbar .btn{border-radius:12px}
+
+  /* ===== Ingredient list (scrollable) ===== */
+  .ing-box{
+    max-height: 180px;                /* tinggi list sebelum scroll */
+    overflow: auto;
+    padding: .4rem;
+    background: linear-gradient(180deg,#fafafa, #f7f7f7);
+    border: 1px solid #eef0f2;
+    border-radius: 14px;
+  }
+
+  /* cantikkan scrollbar (webkit) */
+  .ing-box::-webkit-scrollbar{height:8px;width:8px}
+  .ing-box::-webkit-scrollbar-thumb{
+    background: #d7dbe0; border-radius: 999px;
+  }
+  .ing-box::-webkit-scrollbar-track{background: transparent}
+
+  /* ===== Ingredient chip-card ===== */
+  #ingList{display:flex; flex-direction:column; gap:.5rem}
+  #ingList .ing-row{
+    display:grid;
+    grid-template-columns: 1fr auto auto auto; /* name | qty | unit | del */
+    gap:.5rem;
+    align-items:center;
+    padding:.55rem .65rem;
+    border:1px solid #e7eaee;
+    border-radius:12px;
+    background:#fff;
+    box-shadow: 0 1px 1.5px rgba(16,24,40,.06);
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+
+
+  #ingList .name{
+    font-weight:600; color:#111827;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* badge style */
+  #ingList .badge-soft{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 2.25rem;
+    padding:.25rem .55rem;
+    border-radius:999px;
+    font-size:.78rem; line-height:1rem;
+    border:1px solid;
+    user-select:none;
+  }
+  #ingList .qty{ background:#eef8f3; border-color:#d2efe0; color:#166534; }     /* hijau lembut */
+  #ingList .unit{background:#f2f4f7; border-color:#e5e7eb; color:#475467;}    /* abu lembut */
+
+  /* tombol hapus bulat */
+  #ingList .btn-del{
+    --bs-btn-padding-y:.2rem; --bs-btn-padding-x:.5rem;
+    --bs-btn-border-color:#ffccd5;
+    --bs-btn-color:#b42318; --bs-btn-hover-color:#7a271a;
+    border-radius:999px;
+    background:#fff5f6; border:1px solid #ffd1d8;
+      position: relative;
+      top: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  #ingList .btn-del:hover{background:#ffe4e8}
+
+  /* kecilkan tulisan helper */
+  .text-helper{font-size:.76rem; color:#6b7280}
 </style>
 @endpush
 
@@ -63,14 +138,30 @@
         <h5 class="modal-title">Menu</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
+
       <div class="modal-body">
         <div class="row g-3">
-          <div class="col-md-5">
+          {{-- KIRI: diperlebar untuk bahan --}}
+          <div class="col-md-7">
             <img id="imgPreview" class="w-100 rounded border" style="aspect-ratio:1/1;object-fit:cover" src="/assets/img/placeholder.jpg" alt="Preview">
             <input id="imgFile" type="file" class="form-control form-control-sm mt-2" accept="image/*">
             <small class="text-secondary">Gambar akan disimpan sebagai DataURL di localStorage.</small>
+
+            <hr class="my-3">
+            <h6 class="mb-2">Bahan yang digunakan</h6>
+
+            <div class="ing-toolbar d-flex gap-2">
+              <select id="ingSelect" class="form-select form-select-sm" title="pilih bahan"></select>
+              <input id="ingUse" type="number" min="1" step="1" value="1" class="form-control form-control-sm" style="max-width:120px" placeholder="Qty">
+              <button id="btnAddIng" type="button" class="btn btn-sm btn-dark">TAMBAH</button>
+            </div>
+
+            <div class="ing-box mt-2" id="ingList"><!-- diisi JS --></div>
+            <small class="text-secondary d-block mt-1">Qty mengikuti satuan item inventory (gram, ml, pcs, dll).</small>
           </div>
-          <div class="col-md-7">
+
+          {{-- KANAN: form menu --}}
+          <div class="col-md-5">
             <div class="mb-2">
               <label class="form-label">Nama</label>
               <input name="name" type="text" class="form-control" required>
@@ -85,12 +176,11 @@
                 <option>Minuman</option>
                 <option>Makanan</option>
                 <option>Snack</option>
-                <option>Bahan</option>
               </select>
             </div>
             <div class="row">
               <div class="col-md-6">
-                <label class="form-label">Stok awal</label>
+                <label class="form-label">Stok awal (opsional)</label>
                 <input name="stock" type="number" class="form-control" min="0" value="0">
               </div>
               <div class="col-md-6">
@@ -105,6 +195,7 @@
           </div>
         </div>
       </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
         <button type="submit" class="btn btn-dark">Simpan</button>
@@ -112,12 +203,10 @@
     </form>
   </div>
 </div>
-
 @endsection
 
 @push('scripts')
 <script>
-  // dipakai untuk kirim aktivitas
   window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
 </script>
 <script src="{{ asset('assets/kasir/manage.js') }}?v={{ time() }}"></script>

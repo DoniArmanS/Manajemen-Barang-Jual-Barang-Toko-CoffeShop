@@ -1,52 +1,70 @@
 /* public/assets/kasir/cashier.js
-   Cashier (POS) — membaca katalog dari localStorage + Activity log SALE
-   - Katalog key: 'kasir_products_v1' (dibuat/diubah oleh manage.js)
-   - Saat checkout, log 'sale' ke /activity dan ping dashboard
+   POS dengan Resep:
+   - Baca katalog 'kasir_products_v1' (yang punya ingredients)
+   - Hitung stok tersedia menu dari Inventory ('inv_items_v1')
+   - Saat checkout: kurangi stok bahan & tulis activity
 */
 (function(){
   const KEY_PRODUCTS = 'kasir_products_v1';
+  const KEY_INV      = 'inv_items_v1';
   const ALLOWED_CATS = ['Minuman','Makanan','Snack'];
   const TAX = 0.10;
 
   const fmt = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
   const state = { items:new Map(), products:[], q:'', cat:'ALL' };
 
-  // ---------- Activity helpers ----------
-  function pingDashboard(){ localStorage.setItem('activity_ping', Date.now().toString()); }
+  // ===== Activity (local + server) =====
   function postActivity(payload){
-  // simpan ke localStorage juga
-  const ACT_PREFIX = 'activity_';
-  const todayKey = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  };
-  const actKey = () => ACT_PREFIX + todayKey();
-  const list = JSON.parse(localStorage.getItem(actKey()) || '[]');
-  list.unshift({
-    ts: Date.now(),
-    source: payload.source || 'cashier',
-    action: payload.action,
-    item_name: payload.item_name ?? null,
-    qty_change: payload.qty_change ?? null,
-    note: payload.note ?? null,
-    meta: payload.meta ?? {}
-  });
-  localStorage.setItem(actKey(), JSON.stringify(list));
-  localStorage.setItem('activity_ping', Date.now().toString());
+    const ACT_PREFIX = 'activity_';
+    const todayKey = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+    const actKey = () => ACT_PREFIX + todayKey();
+    const list = JSON.parse(localStorage.getItem(actKey()) || '[]');
+    list.unshift({
+      ts: Date.now(),
+      source: payload.source || 'cashier',
+      action: payload.action,
+      item_name: payload.item_name ?? null,
+      qty_change: payload.qty_change ?? null,
+      note: payload.note ?? null,
+      meta: payload.meta ?? {}
+    });
+    localStorage.setItem(actKey(), JSON.stringify(list));
+    localStorage.setItem('activity_ping', Date.now().toString());
 
-  // kirim ke server juga (opsional)
-  fetch('/activity', {
-    method:'POST',
-    headers:{
-      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-      'Content-Type':'application/json'
-    },
-    body: JSON.stringify(payload)
-  }).catch(()=>{});
-}
+    fetch('/activity', {
+      method:'POST',
+      headers:{
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify(payload)
+    }).catch(()=>{});
+  }
 
+  // ===== Inventory helpers =====
+  function loadInventory(){ try{ return JSON.parse(localStorage.getItem(KEY_INV) || '[]'); }catch{return [];} }
+  function saveInventory(list){ localStorage.setItem(KEY_INV, JSON.stringify(list)); localStorage.setItem('activity_ping', Date.now().toString()); }
+  function getAvailableFromIngredients(product){
+    if (!Array.isArray(product.ingredients) || product.ingredients.length===0){
+      return Number(product.stock||0) || 0;
+    }
+    const inv = loadInventory();
+    let max = Infinity;
+    for (const ing of product.ingredients){
+      const it = inv.find(x => Number(x.id) === Number(ing.invId));
+      const available = it ? Number(it.stock||0) : 0;
+      const need = Math.max(0, Number(ing.use||0));
+      if (need <= 0) continue;
+      max = Math.min(max, Math.floor(available / need));
+    }
+    if (!isFinite(max)) max = 0;
+    return Math.max(0, max);
+  }
 
-  // ---------- Products ----------
+  // ===== Products =====
   function loadProducts(){
     try{
       const raw = localStorage.getItem(KEY_PRODUCTS);
@@ -70,28 +88,31 @@
     const q = state.q.toLowerCase(), cat = state.cat;
     const list = state.products.filter(p => (cat==='ALL'||p.cat===cat) &&
       (q==='' || p.name.toLowerCase().includes(q) || (p.id||'').toLowerCase().includes(q)));
-    grid.innerHTML = list.map(p=>`
-      <div class="col-6 col-md-4">
-        <div class="p-2 product-card h-100">
-          <img class="product-img" src="${p.img || '/assets/img/placeholder.jpg'}" alt="${p.name}">
-          <div class="mt-2">
-            <span class="badge badge-chip ${
-              p.cat==='Minuman' ? 'bg-gradient-info'
-                : p.cat==='Makanan' ? 'bg-gradient-danger'
-                : 'bg-gradient-warning'
-            }">${p.cat}</span>
-            <div class="fw-bold small mt-1">${p.name}</div>
-            <div class="text-secondary text-xs">Stok: ${p.stock ?? '-'}</div>
-            <div class="fw-bold mt-1">${fmt(p.price||0)}</div>
-            <button class="btn btn-sm btn-dark w-100 mt-2" data-add="${p.id}">TAMBAH</button>
+    grid.innerHTML = list.map(p=>{
+      const can = getAvailableFromIngredients(p);
+      return `
+        <div class="col-6 col-md-4">
+          <div class="p-2 product-card h-100">
+            <img class="product-img" src="${p.img || '/assets/img/placeholder.jpg'}" alt="${p.name}">
+            <div class="mt-2">
+              <span class="badge badge-chip ${
+                p.cat==='Minuman' ? 'bg-gradient-info'
+                  : p.cat==='Makanan' ? 'bg-gradient-danger'
+                  : 'bg-gradient-warning'
+              }">${p.cat}</span>
+              <div class="fw-bold small mt-1">${p.name}</div>
+              <div class="text-secondary text-xs">Bisa dibuat: ${can}</div>
+              <div class="fw-bold mt-1">${fmt(p.price||0)}</div>
+              <button class="btn btn-sm btn-dark w-100 mt-2" data-add="${p.id}" ${can<=0?'disabled':''}>TAMBAH</button>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
     grid.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>addToCart(b.dataset.add,1)));
   }
 
-  // ---------- Cart ----------
+  // ===== Cart =====
   function calc(){
     let subtotal = 0;
     for(const {product,qty} of state.items.values()) subtotal += (product.price||0) * qty;
@@ -105,8 +126,9 @@
 
   function addToCart(id, delta){
     const p = state.products.find(x=>x.id===id); if(!p) return;
+    const limit = getAvailableFromIngredients(p);
     const cur = state.items.get(id) || {product:p, qty:0};
-    cur.qty = Math.max(0, cur.qty + delta);
+    cur.qty = Math.max(0, Math.min(limit, cur.qty + delta));   // batasi sesuai stok bahan
     if(cur.qty===0) state.items.delete(id); else state.items.set(id,cur);
     renderCart();
   }
@@ -152,7 +174,7 @@
     document.getElementById('totalText').textContent    = fmt(total);
   }
 
-  // ---------- Receipt ----------
+  // ===== Receipt =====
   function buildReceiptHtml(order) {
     const rows = order.items.map(({product, qty}) => `
       <tr>
@@ -194,17 +216,53 @@
     `;
   }
 
+  function consumeIngredientsFromInventory(order){
+    // Kurangi stok inventory berdasarkan resep × qty
+    const inv = loadInventory();
+    const usageSummary = []; // untuk catatan activity
+
+    for (const {product, qty} of order.items){
+      if (!Array.isArray(product.ingredients)) continue;
+      for (const ing of product.ingredients){
+        const it = inv.find(x => Number(x.id) === Number(ing.invId));
+        if (!it) continue;
+        const used = (Number(ing.use||0) * Number(qty||0)) || 0;
+        if (used<=0) continue;
+        it.stock = Math.max(0, Number(it.stock||0) - used);
+        usageSummary.push({name: it.name, unit: it.unit||'pcs', used, for: product.name});
+      }
+    }
+
+    saveInventory(inv);
+
+    // 1 activity ringkas
+    if (usageSummary.length){
+      const note = usageSummary.map(u=>`${u.name} ${u.used}${u.unit}`).join(' • ');
+      postActivity({
+        source: 'cashier',
+        action: 'consume',
+        item_name: `Pemakaian bahan (${usageSummary.length} item)`,
+        qty_change: null,
+        note,
+        meta: { order_no: order.no, items: usageSummary }
+      });
+    }
+  }
+
   function checkout(){
     if(state.items.size===0) return;
 
     const pay = document.querySelector('input[name="pay"]:checked')?.value || 'Tunai';
     const order = { no: orderNo(), items:[...state.items.values()], pay, ...calc() };
 
-    // show receipt
+    // tampilkan struk
     document.getElementById('receiptContent').innerHTML = buildReceiptHtml(order);
     new bootstrap.Modal(document.getElementById('receiptModal')).show();
 
-    // log aktivitas SALE
+    // konsumsi bahan
+    consumeIngredientsFromInventory(order);
+
+    // log SALE
     const itemCount = order.items.reduce((n,{qty})=>n+qty,0);
     postActivity({
       action: 'sale',
@@ -219,12 +277,13 @@
       }
     });
 
-    // clear cart
+    // kosongkan cart & refresh katalog (stok bahan berubah → stok bisa dibuat berubah)
     state.items.clear();
     renderCart();
+    renderProducts();
   }
 
-  // ---------- Init ----------
+  // ===== Init =====
   function refreshCatalog(){
     state.products = loadProducts();
     renderCategories();
@@ -247,7 +306,7 @@
 
   // sinkron kalau katalog berubah dari halaman management
   window.addEventListener('storage', (ev) => {
-    if (ev.key === KEY_PRODUCTS || ev.key === 'kasir_products_ping') {
+    if (ev.key === KEY_PRODUCTS || ev.key === 'kasir_products_ping' || ev.key === KEY_INV) {
       refreshCatalog();
     }
   });

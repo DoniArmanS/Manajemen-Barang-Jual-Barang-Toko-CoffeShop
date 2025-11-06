@@ -17,7 +17,6 @@
             <p class="text-sm mb-0">Kelola stok barang & bahan — <span class="text-danger fw-bold">tanpa database (demo)</span></p>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-dark" id="btnImport">IMPORT CSV</button>
             <button class="btn btn-sm btn-outline-dark" id="btnExport">EXPORT CSV</button>
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalItem">+ ITEM</button>
           </div>
