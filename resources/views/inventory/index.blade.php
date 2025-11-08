@@ -21,6 +21,7 @@
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalItem">+ ITEM</button>
           </div>
         </div>
+
         <div class="card-body pt-0">
           <div class="row g-3 align-items-center mt-2">
             <div class="col-lg-5">
@@ -30,13 +31,13 @@
               </div>
             </div>
             <div class="col-lg-7 text-lg-end">
-              <div class="btn-group btn-group-sm me-2" role="group" aria-label="Filters">
+              <div class="btn-group btn-group-sm me-2" role="group">
                 <button class="btn btn-outline-secondary active" data-filter="all">ALL</button>
                 <button class="btn btn-outline-secondary" data-filter="ok">READY</button>
                 <button class="btn btn-outline-secondary" data-filter="low">LOW</button>
                 <button class="btn btn-outline-secondary" data-filter="out">OUT</button>
               </div>
-              <div class="btn-group btn-group-sm" role="group" aria-label="Sort">
+              <div class="btn-group btn-group-sm" role="group">
                 <button class="btn btn-outline-secondary" data-sort="name">Sort: Name</button>
                 <button class="btn btn-outline-secondary" data-sort="stock">Sort: Stock</button>
               </div>
@@ -60,6 +61,7 @@
               <tbody></tbody>
             </table>
           </div>
+
         </div>
       </div>
     </div>
@@ -71,15 +73,9 @@
       <div class="card">
         <div class="card-body">
           <h6 class="text-uppercase text-secondary text-xxs font-weight-bolder">RINGKASAN</h6>
-          <div class="d-flex justify-content-between">
-            <span>Total Item</span><span id="statTotal" class="fw-bold">0</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span>Low Stock</span><span id="statLow" class="text-warning fw-bold">0</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span>Out of Stock</span><span id="statOut" class="text-danger fw-bold">0</span>
-          </div>
+          <div class="d-flex justify-content-between"><span>Total Item</span><span id="statTotal" class="fw-bold">0</span></div>
+          <div class="d-flex justify-content-between"><span>Low Stock</span><span id="statLow" class="text-warning fw-bold">0</span></div>
+          <div class="d-flex justify-content-between"><span>Out of Stock</span><span id="statOut" class="text-danger fw-bold">0</span></div>
         </div>
       </div>
     </div>
@@ -87,6 +83,7 @@
       <div class="card">
         <div class="card-body">
           <h6 class="text-uppercase text-secondary text-xxs font-weight-bolder">CATATAN</h6>
+          {{-- tombol export ditempel via JS (kanan atas) --}}
           <ul id="log" class="mb-0 small"></ul>
         </div>
       </div>
@@ -94,7 +91,7 @@
   </div>
 </div>
 
-{{-- MODAL: Tambah/Edit --}}
+{{-- MODAL: Tambah/Edit Item (opsional simpan harga default) --}}
 <div class="modal fade" id="modalItem" tabindex="-1">
   <div class="modal-dialog">
     <form class="modal-content" id="formItem">
@@ -114,7 +111,7 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Kategori</label>
-            <input type="text" class="form-control" name="category" placeholder="Biji, Susu, Sirup, etc">
+            <input type="text" class="form-control" name="category" placeholder="Biji, Susu, Sirup, dll">
           </div>
           <div class="col-md-3">
             <label class="form-label">Min</label>
@@ -132,6 +129,11 @@
             <label class="form-label">Catatan</label>
             <input type="text" class="form-control" name="note">
           </div>
+          {{-- harga default (optional, untuk memudahkan restock) --}}
+          <div class="col-12">
+            <label class="form-label">Harga Default (opsional)</label>
+            <input type="number" class="form-control" name="default_cost" placeholder="Rp …">
+          </div>
           <input type="hidden" name="id">
         </div>
       </div>
@@ -143,7 +145,7 @@
   </div>
 </div>
 
-{{-- MODAL: Adjust --}}
+{{-- MODAL: Adjust + Biaya --}}
 <div class="modal fade" id="modalAdjust" tabindex="-1">
   <div class="modal-dialog">
     <form class="modal-content" id="formAdjust">
@@ -164,6 +166,11 @@
           <div class="col-12">
             <label class="form-label">Keterangan</label>
             <input type="text" class="form-control" name="reason" placeholder="Masuk stok / Terpakai / Koreksi">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Biaya (Rp) — isi untuk RESTOCK (opsional)</label>
+            <input type="number" class="form-control" name="cost" placeholder="Total biaya restock (bukan per unit)">
+            <div class="form-text">Jika <strong>Qty &gt; 0</strong> dan Biaya diisi, akan dicatat sebagai <em>Pengeluaran</em> di Dashboard.</div>
           </div>
           <input type="hidden" name="id">
         </div>

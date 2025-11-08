@@ -6,6 +6,11 @@
   const $  = (sel, ctx=document) => ctx.querySelector(sel);
   const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 
+  // ==== Tambahan: transaksi untuk Dashboard ====
+  const KEY_TRANSACTIONS = 'coffeeshop_transactions_v1';
+  function loadTransactions(){ try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS) || '[]'); } catch { return []; } }
+  function saveTransactions(list){ localStorage.setItem(KEY_TRANSACTIONS, JSON.stringify(list)); pingDashboard(); }
+
   let SORT = { key: null, dir: 1 }; // 1 asc, -1 desc
 
   // ========= Helpers =========
@@ -66,7 +71,7 @@
       display: flex;
       align-items: center;
       gap: .5rem;
-      margin: 0;            /* no extra space */
+      margin: 0;
       padding: 0;
       background: transparent;
       z-index: 1;
@@ -75,7 +80,7 @@
 
     /* list catatan: kalau >5 item jadi scroll */
     #log.scroll {
-      max-height: 240px;        /* ~5-6 baris */
+      max-height: 240px;
       overflow-y: auto;
       padding-right: 6px;
     }
@@ -149,13 +154,14 @@
   // ========= Export CSV untuk Activity harian dari halaman Inventory =========
   function exportActivityCSV(){
     const list = invActivities();
-    const rows = [['datetime','action','item_name','qty_change','note']];
+    const rows = [['datetime','action','item_name','qty_change','amount','note']];
     for (const a of list.slice().reverse()){ // paling lama → paling baru
       rows.push([
         new Date(a.ts).toISOString(),
         a.action,
         a.item_name || '',
         (a.qty_change===0 || a.qty_change) ? a.qty_change : '',
+        (a.meta && a.meta.amount) ? a.meta.amount : '',
         (a.note||'').replace(/\r?\n/g,' ')
       ]);
     }
@@ -207,7 +213,7 @@
     const f=$('#formItem'); f.reset(); f.querySelector('[name=id]').value=id||'';
     if(id){
       const it=getById(id);
-      ['name','sku','category','min','unit','stock','note'].forEach(k=>{
+      ['name','sku','category','min','unit','stock','note','default_cost'].forEach(k=>{
         const el=f.querySelector(`[name=${k}]`);
         if (el) el.value=it[k]??'';
       });
@@ -219,6 +225,11 @@
     const it=getById(id); const f=$('#formAdjust'); f.reset();
     f.querySelector('[name=id]').value=id;
     f.querySelector('[name=name]').value=it?.name || '';
+    // Prefill biaya jika ada default_cost dan field cost tersedia
+    const costEl = f.querySelector('[name=cost]');
+    if (costEl && it && typeof it.default_cost !== 'undefined') {
+      costEl.value = Number(it.default_cost) || 0;
+    }
     new bootstrap.Modal('#modalAdjust').show();
   }
 
@@ -303,6 +314,12 @@
       const fd=new FormData(e.target); const item=Object.fromEntries(fd.entries());
       item.id = item.id? Number(item.id): undefined;
       item.min = Number(item.min||0); item.stock = Number(item.stock||0);
+      // simpan default_cost kalau ada field-nya
+      if (typeof item.default_cost !== 'undefined' && item.default_cost !== '') {
+        item.default_cost = Number(item.default_cost);
+      } else {
+        delete item.default_cost;
+      }
       upsert(item);
       bootstrap.Modal.getInstance(document.getElementById('modalItem')).hide();
       e.target.reset();
@@ -313,10 +330,38 @@
       e.preventDefault();
       const fd=new FormData(e.target);
       const id=Number(fd.get('id')); const delta=Number(fd.get('delta')||0);
+      const reason = fd.get('reason') || 'adjust';
+      const cost   = Number(fd.get('cost')||0); // OPSIONAL biaya restock
       const it=getById(id);
       it.stock=Math.max(0, Number(it.stock||0)+delta);
-      // simpan perubahan + activity
-      pushActivity({ action:'adjust', item_name:it.name, qty_change: delta, note:(fd.get('reason')||'adjust') });
+      // simpan perubahan + activity adjust stok
+      pushActivity({ action:'adjust', item_name:it.name, qty_change: delta, note:reason });
+
+      // ==== Tambahan: catat pengeluaran agar Dashboard naik ====
+      // Hanya saat restock (delta > 0) dan ada biaya (cost > 0)
+      if (delta > 0 && cost > 0){
+        // 1) Activity khusus expense (tampil juga di CATATAN)
+        pushActivity({
+          action:'expense',
+          item_name: it.name,
+          qty_change: delta,
+          note: `Restock — ${reason}`,
+          meta: { amount: cost }
+        });
+
+        // 2) Simpan TRANSACTION agar dashboard baca (type 'inventory' dihitung sebagai expense)
+        const tx = loadTransactions();
+        tx.push({
+          id: 'tx_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+          type: 'inventory',                 // dashboard treat as pengeluaran
+          amount: Number(cost)||0,
+          datetime: new Date().toISOString(),
+          note: `Restock ${it.name} (${delta})`
+        });
+        saveTransactions(tx);
+      }
+      // =====================================
+
       upsert(it);
       bootstrap.Modal.getInstance(document.getElementById('modalAdjust')).hide();
     });
@@ -338,8 +383,8 @@
 
     // export/import CSV items
     $('#btnExport')?.addEventListener('click', ()=>{
-      const rows=[['name','sku','category','stock','min','unit','note']];
-      for(const it of loadItems()){ rows.push([it.name,it.sku||'',it.category||'',it.stock||0,it.min||0,it.unit||'pcs',it.note||'']); }
+      const rows=[['name','sku','category','stock','min','unit','note','default_cost']];
+      for(const it of loadItems()){ rows.push([it.name,it.sku||'',it.category||'',it.stock||0,it.min||0,it.unit||'pcs',it.note||'', (typeof it.default_cost!=='undefined'?it.default_cost:'')]); }
       const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
       const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='inventory.csv'; a.click();
     });
@@ -351,8 +396,8 @@
         const list=loadItems();
         for(const line of lines){
           const cols=line.match(/("([^"]|"")*"|[^,]+)/g)?.map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"'))||[];
-          const [name,sku,category,stock,min,unit,note]=cols;
-          list.push({id:Date.now()+Math.random(), name, sku, category, stock:Number(stock||0), min:Number(min||0), unit:unit||'pcs', note});
+          const [name,sku,category,stock,min,unit,note,default_cost]=cols;
+          list.push({id:Date.now()+Math.random(), name, sku, category, stock:Number(stock||0), min:Number(min||0), unit:unit||'pcs', note, ...(default_cost?{default_cost:Number(default_cost)}:{})});
         }
         saveItems(list); render();
       };

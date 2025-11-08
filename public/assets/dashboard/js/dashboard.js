@@ -4,6 +4,9 @@ const KEY_INVENTORY_ALIASES = ['inv_items_v1', 'coffeeshop_inventory_v1'];
 const KEY_CASH = 'coffeeshop_cash_v1';
 const ACT_PREFIX = 'activity_'; // sama dengan inventory.js
 
+// === Tambahan: sumber order kasir (untuk auto-income) ===
+const KEY_KASIR_ORDERS = 'kasir_orders_v1';
+
 const $  = (sel, ctx=document) => ctx.querySelector(sel);
 
 let CURRENT_PERIOD = 'today';
@@ -14,6 +17,7 @@ let LAST_DB_SUMMARY = { total: 0, ready: 0, low: 0, out: 0 };
 
 // -------- helpers
 function loadTransactions(){ try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS) || '[]'); } catch { return []; } }
+function saveTransactions(list){ localStorage.setItem(KEY_TRANSACTIONS, JSON.stringify(list)); }
 function loadInventoryLS(){
   for (const k of KEY_INVENTORY_ALIASES) {
     const raw = localStorage.getItem(k);
@@ -37,7 +41,16 @@ function formatRupiah(amount){
 }
 function getToday(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function isToday(dateStr){ const date=new Date(dateStr); const t=getToday(); return date>=t && date<new Date(t.getTime()+86400000); }
-function isThisWeek(dateStr){ const date=new Date(dateStr); const today=new Date(); const sow=new Date(today); sow.setDate(today.getDate()-today.getDay()); sow.setHours(0,0,0,0); return date>=sow; }
+function isThisWeek(dateStr){
+  const date=new Date(dateStr);
+  const today=new Date();
+  const sow=new Date(today);
+  // Set ke awal minggu (Minggu)
+  sow.setDate(today.getDate()-today.getDay());
+  sow.setHours(0,0,0,0);
+  const eow=new Date(sow); eow.setDate(sow.getDate()+7);
+  return date>=sow && date<eow;
+}
 function isThisMonth(dateStr){ const date=new Date(dateStr); const today=new Date(); return date.getMonth()===today.getMonth() && date.getFullYear()===today.getFullYear(); }
 function isThisYear(dateStr){ const date=new Date(dateStr); const today=new Date(); return date.getFullYear()===today.getFullYear(); }
 function filterByPeriod(transactions){
@@ -48,6 +61,38 @@ function filterByPeriod(transactions){
   return transactions;
 }
 function statusOf(it){ if((it.stock|0) <= 0) return 'out'; if((it.stock|0) <= (parseInt(it.min)||0)) return 'low'; return 'ok'; }
+
+// === Tambahan: ambil orders kasir & sinkron ke transaksi income ===
+function loadKasirOrders(){ try { return JSON.parse(localStorage.getItem(KEY_KASIR_ORDERS) || '[]'); } catch { return []; } }
+/** Buat income dari order kasir status "Selesai" (anti-duplikat via meta.kasir_no) */
+function syncIncomeFromKasir(){
+  const orders = loadKasirOrders() || [];
+  if (!Array.isArray(orders) || orders.length === 0) return;
+
+  const tx = loadTransactions();
+  let changed = false;
+
+  for (const o of orders){
+    // Struktur order di riwayatmu: { no, ts, total, status, ... }
+    if (!o || o.status !== 'Selesai') continue;
+    const already = tx.some(t => t.meta && t.meta.kasir_no === o.no);
+    if (already) continue;
+
+    tx.push({
+      id: 'tx_kasir_'+(o.no || (Date.now()+Math.random())).toString(),
+      type: 'income',
+      amount: Number(o.total) || 0,
+      datetime: o.ts ? new Date(o.ts).toISOString() : new Date().toISOString(),
+      note: `SALE — ${o.no || 'kasir'}`,
+      meta: { source: 'kasir', kasir_no: o.no || null }
+    });
+    changed = true;
+  }
+
+  if (changed){
+    saveTransactions(tx);
+  }
+}
 
 // -------- charts init
 function initCharts(){
@@ -85,21 +130,57 @@ function initCharts(){
   }
 }
 
-// -------- charts update
+// -------- charts update (period-aware + sorted)
 function updateFinancialChart(){
   if(!chartFinancial) return;
+
   const tx = filterByPeriod(loadTransactions());
-  const grouped = {};
-  tx.forEach(t=>{
-    const d = new Date(t.datetime).toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
-    if(!grouped[d]) grouped[d]={income:0, expense:0};
-    if(t.type==='income') grouped[d].income += +t.amount||0;
-    if(t.type==='expense'||t.type==='inventory') grouped[d].expense += +t.amount||0;
-  });
-  const labels = Object.keys(grouped).slice(-7);
-  chartFinancial.data.labels = labels;
-  chartFinancial.data.datasets[0].data = labels.map(l=>grouped[l].income);
-  chartFinancial.data.datasets[1].data = labels.map(l=>grouped[l].expense);
+
+  // Grouping key & label sesuai periode
+  const grouped = {}; // key => { income, expense, ts }
+  function pushRow(key, ts, type, amt, label){
+    if(!grouped[key]) grouped[key] = { income:0, expense:0, ts, label };
+    if(type==='income') grouped[key].income += amt;
+    if(type==='expense' || type==='inventory') grouped[key].expense += amt;
+  }
+
+  for (const t of tx){
+    const d = new Date(t.datetime);
+    let key, label, ts;
+
+    if (CURRENT_PERIOD === 'year'){
+      key   = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      label = d.toLocaleString('id-ID', { month:'short' }); // Jan, Feb, ...
+      ts    = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    } else if (CURRENT_PERIOD === 'month' || CURRENT_PERIOD === 'week'){
+      key   = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      label = d.toLocaleDateString('id-ID',{ day:'2-digit', month:'short' });
+      ts    = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    } else { // today
+      const hour = d.getHours();
+      key   = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${hour}`;
+      label = `${String(hour).padStart(2,'0')}:00`;
+      ts    = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour).getTime();
+    }
+
+    pushRow(key, ts, t.type, (+t.amount||0), label);
+  }
+
+  // Sort kronologis
+  const rows = Object.values(grouped).sort((a,b)=>a.ts-b.ts);
+
+  // Batasi poin untuk grafik supaya rapi
+  let limit = 7;
+  if (CURRENT_PERIOD === 'month') limit = 31;
+  if (CURRENT_PERIOD === 'year')  limit = 12;
+  if (CURRENT_PERIOD === 'week')  limit = 7;
+  if (CURRENT_PERIOD === 'today') limit = 24;
+
+  const sliced = rows.slice(-limit);
+
+  chartFinancial.data.labels = sliced.map(r=>r.label);
+  chartFinancial.data.datasets[0].data = sliced.map(r=>r.income);
+  chartFinancial.data.datasets[1].data = sliced.map(r=>r.expense);
   chartFinancial.update();
 }
 
@@ -154,7 +235,7 @@ function updateTopStats(){
   set('statExpense', formatRupiah(expense));
   set('statExpenseCount', expenseCount);
   set('statCash', formatRupiah(cash));
-  set('statProfit', formatRupiah(profit));
+  set('statProfit', formatRupiah(profit)); // bisa negatif, formatRupiah handle minus
 }
 
 function writeInventoryCounters(sum){
@@ -266,6 +347,9 @@ function renderAll(){
 document.addEventListener('DOMContentLoaded', () => {
   initCharts();
 
+  // Sinkron pendapatan dari kasir (sekali saat load)
+  syncIncomeFromKasir();
+
   $('#periodFilter')?.addEventListener('change', e => {
     CURRENT_PERIOD = e.target.value;
     renderAll();
@@ -289,11 +373,23 @@ document.addEventListener('DOMContentLoaded', () => {
     pull();
     setInterval(pull, 15000);
   } else {
-    // listen perubahan dari halaman Inventory (ping via localStorage)
+    // listen perubahan dari halaman Inventory & Kasir (ping via localStorage)
     window.addEventListener('storage', (ev) => {
-      if (KEY_INVENTORY_ALIASES.includes(ev.key) || ev.key === 'activity_ping' || ev.key === actKey()) {
+      if (
+        KEY_INVENTORY_ALIASES.includes(ev.key) ||
+        ev.key === 'activity_ping' ||
+        ev.key === actKey() ||
+        ev.key === KEY_KASIR_ORDERS ||        // <== kasir orders berubah
+        ev.key === 'kasir_orders_ping' ||     // <== ping dari kasir
+        ev.key === KEY_TRANSACTIONS           // <== transaksi berubah
+      ) {
+        if (ev.key === KEY_KASIR_ORDERS || ev.key === 'kasir_orders_ping') {
+          syncIncomeFromKasir();              // generate income baru dari kasir
+        }
         renderLocalStorage();
         fetchActivities();
+        updateTopStats();
+        updateFinancialChart();
       }
     });
   }
@@ -302,5 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnExportActivity')?.addEventListener('click', exportActivity);
 
   // Poll activity tiap 5 detik supaya live
-  setInterval(fetchActivities, 5000);
+  setInterval(() => {
+    syncIncomeFromKasir(); // jaga-jaga bila tab kasir lain update
+    fetchActivities();
+    renderAll();
+  }, 5000);
 });
