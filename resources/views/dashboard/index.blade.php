@@ -31,46 +31,6 @@
     </div>
   </div>
 
-  {{-- QUICK MENU NAVIGATION --}}
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header"><h6 class="mb-0">Menu Cepat</h6></div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-3">
-              <a href="#" class="btn btn-lg w-100 btn-outline-primary d-flex flex-column align-items-center p-4" id="btnGotoIncome">
-                <i class="ni ni-money-coins text-success" style="font-size: 2.5rem;"></i>
-                <span class="mt-3 fw-bold">PENDAPATAN</span>
-                <small class="text-muted">Kelola penjualan</small>
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="#" class="btn btn-lg w-100 btn-outline-primary d-flex flex-column align-items-center p-4" id="btnGotoExpense">
-                <i class="ni ni-cart text-danger" style="font-size: 2.5rem;"></i>
-                <span class="mt-3 fw-bold">PENGELUARAN</span>
-                <small class="text-muted">Kelola biaya</small>
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="#" class="btn btn-lg w-100 btn-outline-primary d-flex flex-column align-items-center p-4" id="btnGotoInventory">
-                <i class="ni ni-box-2 text-info" style="font-size: 2.5rem;"></i>
-                <span class="mt-3 fw-bold">INVENTORY</span>
-                <small class="text-muted">Kelola stok barang</small>
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="#" class="btn btn-lg w-100 btn-outline-primary d-flex flex-column align-items-center p-4" id="btnGotoCash">
-                <i class="ni ni-credit-card text-warning" style="font-size: 2.5rem;"></i>
-                <span class="mt-3 fw-bold">UANG KAS</span>
-                <small class="text-muted">Kelola kas</small>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
   {{-- STAT KARTU --}}
   <div class="row mb-4">

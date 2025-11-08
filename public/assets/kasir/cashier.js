@@ -1,12 +1,15 @@
 /* public/assets/kasir/cashier.js
-   POS dengan Resep:
+   POS dengan Resep + Riwayat Transaksi:
    - Baca katalog 'kasir_products_v1' (yang punya ingredients)
    - Hitung stok tersedia menu dari Inventory ('inv_items_v1')
-   - Saat checkout: kurangi stok bahan & tulis activity
+   - Saat checkout:
+       • kurangi stok bahan & tulis activity
+       • simpan transaksi ke 'kasir_orders_v1' untuk halaman Riwayat
 */
 (function(){
   const KEY_PRODUCTS = 'kasir_products_v1';
   const KEY_INV      = 'inv_items_v1';
+  const KEY_ORDERS   = 'kasir_orders_v1';   // <—— NEW: riwayat transaksi
   const ALLOWED_CATS = ['Minuman','Makanan','Snack'];
   const TAX = 0.10;
 
@@ -62,6 +65,17 @@
     }
     if (!isFinite(max)) max = 0;
     return Math.max(0, max);
+  }
+
+  // ===== Orders (Riwayat) =====
+  function loadOrders(){ try{ return JSON.parse(localStorage.getItem(KEY_ORDERS) || '[]'); }catch{return [];} }
+  function saveOrder(order){
+    const list = loadOrders();
+    list.unshift(order);                      // newest first
+    // batasan riwayat agar localStorage nggak bengkak
+    if (list.length > 1000) list.length = 1000;
+    localStorage.setItem(KEY_ORDERS, JSON.stringify(list));
+    localStorage.setItem('kasir_orders_ping', Date.now().toString()); // notify riwayat
   }
 
   // ===== Products =====
@@ -216,6 +230,7 @@
     `;
   }
 
+  // ===== Inventory consumption =====
   function consumeIngredientsFromInventory(order){
     // Kurangi stok inventory berdasarkan resep × qty
     const inv = loadInventory();
@@ -249,20 +264,36 @@
     }
   }
 
+  // ===== Checkout =====
   function checkout(){
     if(state.items.size===0) return;
 
     const pay = document.querySelector('input[name="pay"]:checked')?.value || 'Tunai';
-    const order = { no: orderNo(), items:[...state.items.values()], pay, ...calc() };
+    const cartItems = [...state.items.values()];
+    const {subtotal,tax,total} = calc();
+    const order = {
+      no: orderNo(),
+      ts: Date.now(),
+      pay,
+      subtotal, tax, total,
+      status: 'Selesai',
+      // simpan ringkas untuk riwayat
+      items: cartItems.map(({product,qty}) => ({
+        id: product.id,
+        name: product.name,
+        qty,
+        price: product.price || 0
+      }))
+    };
 
     // tampilkan struk
-    document.getElementById('receiptContent').innerHTML = buildReceiptHtml(order);
+    document.getElementById('receiptContent').innerHTML = buildReceiptHtml({ ...order, items: cartItems });
     new bootstrap.Modal(document.getElementById('receiptModal')).show();
 
     // konsumsi bahan
-    consumeIngredientsFromInventory(order);
+    consumeIngredientsFromInventory({ ...order, items: cartItems });
 
-    // log SALE
+    // log SALE (activity dashboard)
     const itemCount = order.items.reduce((n,{qty})=>n+qty,0);
     postActivity({
       action: 'sale',
@@ -273,9 +304,12 @@
         subtotal: order.subtotal,
         tax: order.tax,
         total: order.total,
-        items: order.items.map(({product,qty})=>({id:product.id,name:product.name,qty,price:product.price||0}))
+        items: order.items
       }
     });
+
+    // simpan riwayat transaksi (untuk halaman Riwayat)
+    saveOrder(order);
 
     // kosongkan cart & refresh katalog (stok bahan berubah → stok bisa dibuat berubah)
     state.items.clear();
@@ -304,7 +338,7 @@
     setTimeout(() => { window.print(); printRoot.style.display = 'none'; printRoot.innerHTML = ''; }, 50);
   });
 
-  // sinkron kalau katalog berubah dari halaman management
+  // sinkron kalau katalog/inventory/riwayat berubah dari halaman lain
   window.addEventListener('storage', (ev) => {
     if (ev.key === KEY_PRODUCTS || ev.key === 'kasir_products_ping' || ev.key === KEY_INV) {
       refreshCatalog();
