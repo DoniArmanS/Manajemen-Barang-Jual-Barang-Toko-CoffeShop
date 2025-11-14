@@ -7,20 +7,19 @@ use Illuminate\Http\Request;
 
 class EnsureUserHasRole
 {
-    public function handle(Request $request, Closure $next, string $roles)
+    public function handle($request, Closure $next, $role)
     {
-        $user = $request->user();
-        if (!$user) {
-            return redirect()->route('login');
+        $user = auth()->user();
+
+        if ($user && $user->role === $role) {
+            return $next($request);
         }
 
-        $allowed = collect(explode('|', $roles))
-            ->contains(fn($r) => trim($user->role) === trim($r));
-
-        if (!$allowed) {
-            abort(403, 'Unauthorized.');
+        if ($role === 'cashier') {
+            return redirect()->route('cashier'); // Redirect to cashier if trying to access unauthorized page
         }
 
-        return $next($request);
+        return abort(403, 'Unauthorized');
     }
+
 }

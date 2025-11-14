@@ -51,7 +51,7 @@
     return $$('#ingList .ing-row').map(row => ({
       invId: Number(row.dataset.id),
       name : row.querySelector('.name').textContent,
-      use  : Number(row.querySelector('.use').textContent) || 0,
+      use  : Number(row.querySelector('.qty').textContent) || 0,
       unit : row.querySelector('.unit').textContent
     }));
   }
