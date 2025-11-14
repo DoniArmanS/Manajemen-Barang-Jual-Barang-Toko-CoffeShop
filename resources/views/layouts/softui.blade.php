@@ -50,61 +50,71 @@
     <div class="collapse navbar-collapse w-auto h-auto" id="sidenav-collapse-main">
       <ul class="navbar-nav">
         
-        {{-- Section title --}}
-        <li class="nav-item mt-3">
-          <h6 class="ps-4 ms-2 text-uppercase text-xs font-weight-bolder opacity-6">CoffeShop</h6>
-        </li>
+    {{-- Section title --}}
+    <li class="nav-item mt-3">
+      <h6 class="ps-4 ms-2 text-uppercase text-xs font-weight-bolder opacity-6">CoffeShop</h6>
+    </li>
 
-        {{-- Dashboard --}}
-        <li class="nav-item">
-          <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-tv-2 text-primary text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Dashboard</span>
-          </a>
-        </li>
+    {{-- Dashboard (Admin only) --}}
+    @if(auth()->user()->role === 'admin')
+    <li class="nav-item">
+      <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+        <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+          <i class="ni ni-tv-2 text-primary text-sm opacity-10"></i>
+        </div>
+        <span class="nav-link-text ms-1">Dashboard</span>
+      </a>
+    </li>
+    @endif
 
-        {{-- Cashier --}}
-        <li class="nav-item">
-          <a class="nav-link {{ request()->is('kasir') ? 'active' : '' }}" href="{{ route('cashier') }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-badge text-dark text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Cashier</span>
-          </a>
-        </li>
+    {{-- Cashier (Available for both Admin and Cashier) --}}
+    <li class="nav-item">
+      <a class="nav-link {{ request()->is('kasir') ? 'active' : '' }}" href="{{ route('cashier') }}">
+        <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+          <i class="ni ni-badge text-dark text-sm opacity-10"></i>
+        </div>
+        <span class="nav-link-text ms-1">Cashier</span>
+      </a>
+    </li>
 
-           <li class="nav-item">
-          <a class="nav-link {{ request()->routeIs('cashier.manage') ? 'active' : '' }}" href="{{ route('cashier.manage') }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-settings-gear-65 text-warning text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Cashier Management</span>
-          </a>
-        </li>
+    {{-- Cashier Management (Admin only) --}}
+    @if(auth()->user()->role === 'admin')
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('cashier.manage') ? 'active' : '' }}" href="{{ route('cashier.manage') }}">
+        <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+          <i class="ni ni-settings-gear-65 text-warning text-sm opacity-10"></i>
+        </div>
+        <span class="nav-link-text ms-1">Cashier Management</span>
+      </a>
+    </li>
+    @endif
 
-        {{-- Inventory --}}
-        <li class="nav-item">
-          <a class="nav-link {{ request()->is('inventory') ? 'active' : '' }}" href="{{ route('inventory') }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-archive-2 text-success text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Inventory</span>
-          </a>
-        </li>
+    {{-- Inventory (Admin only) --}}
+    @if(auth()->user()->role === 'admin')
+    <li class="nav-item">
+      <a class="nav-link {{ request()->is('inventory') ? 'active' : '' }}" href="{{ route('inventory') }}">
+        <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+          <i class="ni ni-archive-2 text-success text-sm opacity-10"></i>
+        </div>
+        <span class="nav-link-text ms-1">Inventory</span>
+      </a>
+    </li>
+    @endif
 
-        {{-- Riwayat (baru) --}}
-        <li class="nav-item">
-          <a class="nav-link {{ request()->is('riwayat') ? 'active' : '' }}" href="{{ url('riwayat') }}">
-            <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
-              <i class="ni ni-time-alarm text-info text-sm opacity-10"></i>
-            </div>
-            <span class="nav-link-text ms-1">Riwayat</span>
-          </a>
-        </li>
+    {{-- Riwayat (Admin only) --}}
+    @if(auth()->user()->role === 'admin')
+    <li class="nav-item">
+      <a class="nav-link {{ request()->is('riwayat') ? 'active' : '' }}" href="{{ url('riwayat') }}">
+        <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center">
+          <i class="ni ni-time-alarm text-info text-sm opacity-10"></i>
+        </div>
+        <span class="nav-link-text ms-1">Riwayat</span>
+      </a>
+    </li>
+    @endif
 
-      </ul>
+</ul>
+
     </div>
   </aside>
 
