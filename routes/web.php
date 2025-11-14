@@ -14,15 +14,17 @@ Route::get('/', function () {
 // Semua route yang butuh login
 Route::middleware('auth')->group(function () {
 
-    // Redirect setelah login (lihat langkah 5)
+    // Redirect setelah login berdasarkan role
     Route::get('/home', function () {
         $user = auth()->user();
+
+        // Jika role-nya adalah cashier, arahkan ke kasir
         if ($user->role === 'cashier') {
-            return redirect()->route('cashier');
+            return redirect()->route('cashier'); // Kasir
         }
 
-        // default admin
-        return redirect()->route('dashboard');
+        // Default jika role adalah admin, arahkan ke dashboard
+        return redirect()->route('dashboard'); // Dashboard untuk Admin
     })->name('home');
 
     // ====== ADMIN ONLY ======
