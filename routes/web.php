@@ -28,11 +28,13 @@ Route::middleware('auth')->group(function () {
     // ====== ADMIN ONLY ======
     Route::middleware('role:admin')->group(function () {
 
+        // Dashboard untuk Admin
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('dashboard');
         Route::get('/dashboard/stats', [DashboardController::class, 'stats'])
             ->name('dashboard.stats');
 
+        // Aktivitas Dashboard
         Route::get('/dashboard/activity', [DashboardActivityController::class, 'index'])
             ->name('dashboard.activity');
         Route::post('/dashboard/activity', [DashboardActivityController::class, 'store'])
@@ -40,8 +42,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard/activity/export', [DashboardActivityController::class, 'export'])
             ->name('dashboard.activity.export');
 
-        // INVENTORY
-        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        // INVENTORY Routes for Admin
+        Route::get('/inventory', [InventoryController::class, 'index'])
+            ->name('inventory'); // <— PENTING: pakai 'inventory' saja
         Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
         Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
@@ -49,15 +52,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/summary', [InventoryController::class, 'summary'])->name('inventory.summary');
         Route::get('/inventory/json', [InventoryController::class, 'json'])->name('inventory.json');
 
-        // Cashier Management + Riwayat hanya admin
+        // Cashier Management hanya untuk Admin
         Route::get('/kasir/manage', [CashierManageController::class, 'index'])->name('cashier.manage');
+        
+        // Riwayat hanya Admin
         Route::view('/riwayat', 'riwayat.riwayat')->name('riwayat');
     });
 
-    // ====== ADMIN & CASHIER (halaman kasir) ======
-    Route::middleware('role:admin|cashier')->group(function () {
+    // ====== CASHIER ROUTES ======
+    Route::middleware('role:cashier')->group(function () {
         Route::view('/kasir', 'kasir.index')->name('cashier');
     });
+
 });
 
 // Rute login/logout dari Breeze
