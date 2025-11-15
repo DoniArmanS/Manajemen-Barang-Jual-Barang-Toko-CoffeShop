@@ -52,11 +52,9 @@ Semua perintah di bawah dijalankan di **terminal** pada folder project.
 
 1.  **Clone Repository**
     ```bash
-    git clone [https://github.com/username/online-coffeeshop.git](https://github.com/username/online-coffeeshop.git)
-    cd online-coffeeshop
+    git clone https://github.com/DoniArmanS/Manajemen-Barang-Jual-Barang-Toko-CoffeShop
+    cd Manajemen-Barang-Jual-Barang-Toko-CoffeShop
     ```
-    > **Catatan:** Ganti `username/online-coffeeshop` dengan URL repository kamu sendiri.
-
 2.  **Install Dependencies**
     Pastikan kamu sudah menginstal Composer.
     ```bash
@@ -108,6 +106,7 @@ Setelah menjalankan `php artisan migrate --seed`, akun berikut akan tersedia:
 | Role | Email | Password |
 | :--- | :--- | :--- |
 | Admin | `super@coffeeshop.local` | `secret123` |
+| User | `cashier1@coffeeshop.local` | `secret123` |
 
 * Login sebagai **Admin** menggunakan akun di atas.
 * Dari halaman Admin, kamu bisa menambahkan user dengan role **cashier**.
@@ -115,28 +114,6 @@ Setelah menjalankan `php artisan migrate --seed`, akun berikut akan tersedia:
 
 ---
 
-## ⚙️ Perintah Penting Saat Pengembangan
-
-Terkadang kamu perlu membersihkan *cache* atau me-reset database.
-
-* **Bersihkan cache** (jika ada error aneh)
-    ```bash
-    php artisan cache:clear
-    php artisan config:clear
-    php artisan route:clear
-    php artisan view:clear
-    ```
-
-* **Reset database dari awal** (hapus semua data!)
-    ```bash
-    php artisan migrate:fresh --seed
-    ```
-
----
-
-## 📜 License
 
 
----
-
-<p align="center">Made with ❤️ by Kelompok 2</p>
+<p align="center">Made with ❤️ and 💪 by Kelompok 2</p>
