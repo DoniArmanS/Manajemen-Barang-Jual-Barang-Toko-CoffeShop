@@ -109,7 +109,6 @@ Setelah menjalankan `php artisan migrate --seed`, akun berikut akan tersedia:
 | User | `cashier1@coffeeshop.local` | `secret123` |
 
 * Login sebagai **Admin** menggunakan akun di atas.
-* Dari halaman Admin, kamu bisa menambahkan user dengan role **cashier**.
 * User dengan role **cashier** hanya akan melihat menu **Kasir** dan diarahkan langsung ke halaman kasir sesuai *middleware* role.
 
 ---
