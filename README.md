@@ -27,28 +27,26 @@ Sistem ini memudahkan pemilik dan kasir untuk mengelola stok barang, melakukan t
 
 | Komponen | Teknologi |
 |---------|-----------|
-| 🧩 **Framework** | Laravel 10 (PHP 8.x) |
-| 💾 **Database** | MySQL / MariaDB |
+| 🧩 **Framework** | Laravel 10 (PHP 8.2) |
+| 💾 **Database** | MySQL |
 | 🎨 **Frontend** | Blade Template, HTML, CSS, JavaScript |
 | 📦 **Package Manager** | Composer |
 | 🔧 **Version Control** | Git & GitHub |
-| 🖥️ **Server** | PHP built-in server (`php artisan serve`) |
+| 🖥️ **Server** | PHP built-in server  |
 
 ---
 
 ## 📦 Fitur Utama
 
-- 🔐 **Login / Logout** (Admin & Cashier)
-- 👥 **Manajemen User & Role** (admin, cashier)
-- 📦 **Manajemen Inventory** (CRUD barang + stok)
-- 🛒 **Halaman Kasir** (penjualan, keranjang, nota)
-- 📊 **Dashboard** (ringkasan keuangan & stok)
+- 🔐 **Login / Logout** 
+- 📊 **Dashboard** 
+- 📦 **Manajemen Inventory**
+- 🛒 **Manajemen Kasir** 
+- 🛒 **Halaman Kasir** 
 - 🧾 **Riwayat Aktivitas / Transaksi**
 ---
 
 ## 🚀 Instalasi
-
-Semua perintah di bawah dijalankan di **terminal** pada folder project.
 
 1.  **Clone Repository**
     ```bash
@@ -81,7 +79,7 @@ Semua perintah di bawah dijalankan di **terminal** pada folder project.
     ```
 
 5.  **Jalankan Migrasi & Seeding**
-    Perintah ini akan membuat semua tabel database dan mengisi data *default* (termasuk akun admin).
+    Perintah ini akan membuat semua tabel database dan mengisi data *default* 
     ```bash
     php artisan migrate --seed
     ```
