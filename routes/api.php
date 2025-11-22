@@ -8,12 +8,8 @@ use App\Http\Controllers\InventoryController;
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| Semua route di sini otomatis punya prefix "api"
-| Jadi URL aslinya:
-|   /api/...
 */
 
-// Cek cepat apakah API hidup
 Route::get('/ping', function () {
     return response()->json([
         'status'  => 'ok',
@@ -21,17 +17,14 @@ Route::get('/ping', function () {
     ]);
 });
 
-// Versi 1 dari API kita
+// Versi 1 API kita
 Route::prefix('v1')->group(function () {
 
-    // GET /api/v1/inventory
-    // Ambil data inventory dalam bentuk JSON
-    Route::get('/inventory', [InventoryController::class, 'json'])
+    // GET /api/v1/inventory → ambil data dari DB
+    Route::get('/inventory', [InventoryController::class, 'apiIndex'])
         ->name('api.inventory.index');
 
-});
-
-// (Optional) route bawaan kalau pakai Sanctum, boleh dihapus kalau nggak dipakai
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    // POST /api/v1/inventory/sync → sinkron dari localStorage ke DB
+    Route::post('/inventory/sync', [InventoryController::class, 'apiSync'])
+        ->name('api.inventory.sync');
 });

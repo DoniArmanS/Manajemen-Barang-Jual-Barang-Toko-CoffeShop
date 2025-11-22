@@ -1,15 +1,23 @@
-// public/assets/kasir/inventory.js
-// Inventory (no DB) — localStorage + Activity harian (persist) + ping Dashboard
+// public/assets/inventory/js/inventory.js
+// Inventory (no DB) — localStorage + Activity harian (persist) + ping Dashboard + sync ke REST API
 (function(){
   const KEY_ITEMS  = 'inv_items_v1';   // dipakai dashboard juga
   const ACT_PREFIX = 'activity_';      // activity harian per tanggal
+  const KEY_TRANSACTIONS = 'coffeeshop_transactions_v1';
+
+  const API_BASE = '/api/v1';          // base URL API baru
+
   const $  = (sel, ctx=document) => ctx.querySelector(sel);
   const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 
-  // ==== Tambahan: transaksi untuk Dashboard ====
-  const KEY_TRANSACTIONS = 'coffeeshop_transactions_v1';
-  function loadTransactions(){ try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS) || '[]'); } catch { return []; } }
-  function saveTransactions(list){ localStorage.setItem(KEY_TRANSACTIONS, JSON.stringify(list)); pingDashboard(); }
+  function loadTransactions(){
+    try { return JSON.parse(localStorage.getItem(KEY_TRANSACTIONS) || '[]'); }
+    catch { return []; }
+  }
+  function saveTransactions(list){
+    localStorage.setItem(KEY_TRANSACTIONS, JSON.stringify(list));
+    pingDashboard();
+  }
 
   let SORT = { key: null, dir: 1 }; // 1 asc, -1 desc
 
@@ -20,8 +28,37 @@
   }
   function actKey(){ return ACT_PREFIX + todayKey(); }
 
-  function loadItems(){ return JSON.parse(localStorage.getItem(KEY_ITEMS) || '[]'); }
-  function saveItems(list){ localStorage.setItem(KEY_ITEMS, JSON.stringify(list)); pingDashboard(); }
+  function loadItems(){
+    try { return JSON.parse(localStorage.getItem(KEY_ITEMS) || '[]'); }
+    catch { return []; }
+  }
+
+  function saveItems(list){
+    localStorage.setItem(KEY_ITEMS, JSON.stringify(list));
+    pingDashboard();
+    syncInventoryToServer();        // <— TAMBAHAN: kirim snapshot ke API
+  }
+
+  // Sinkron inventory dari localStorage → REST API
+  async function syncInventoryToServer(){
+    try{
+      const list = loadItems();
+      if (!Array.isArray(list) || list.length === 0) return;
+
+      await fetch(`${API_BASE}/inventory/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ items: list }),
+      });
+      // kalau mau debug:
+      // console.log('Inventory synced:', list.length);
+    }catch(err){
+      console.error('Gagal sync inventory ke server:', err);
+    }
+  }
 
   function statusOf(it){
     if((it.stock|0)<=0) return 'out';
@@ -32,14 +69,12 @@
   function getById(id){ return loadItems().find(x=>x.id===id); }
 
   // ========= Activity harian (persist di localStorage) =========
-  // Ambil SEMUA activity harian (lintas modul)
   function loadActivityAll(){
     try { return JSON.parse(localStorage.getItem(actKey()) || '[]'); } catch { return []; }
   }
-  // Filter khusus INVENTORY (yang tampil di panel ini)
   function invActivities(){
     const all = loadActivityAll();
-    return all.filter(a => a.source === 'inventory' || a.source === undefined); // entry lama tanpa source dianggap inventory
+    return all.filter(a => a.source === 'inventory' || a.source === undefined);
   }
   function saveActivity(list){
     if (list.length > 1000) list = list.slice(-1000);
@@ -47,7 +82,7 @@
     pingDashboard();
   }
   function pushActivity({action, item_name, qty_change=null, note='', meta={}}){
-    const list = loadActivityAll(); // gabungkan dengan activity modul lain
+    const list = loadActivityAll();
     list.unshift({
       ts: Date.now(),
       source: 'inventory',
@@ -58,74 +93,63 @@
 
   // sisipkan style kecil untuk scrollbar & toolbar catatan (sekali di-load)
   function injectStylesOnce(){
-  if (document.getElementById('inv-log-styles')) return;
-  const css = `
-    /* host utk posisi absolute toolbar */
-    .log-host { position: relative; }
+    if (document.getElementById('inv-log-styles')) return;
+    const css = `
+      .log-host { position: relative; }
+      .log-toolbar {
+        position: absolute;
+        top: 17px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        z-index: 1;
+      }
+      #btnInventoryActivityExport { padding: .25rem .5rem; }
+      #log.scroll {
+        max-height: 240px;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      #log.scroll::-webkit-scrollbar { width: 6px; }
+      #log.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 3px; }
+    `;
+    const style = document.createElement('style');
+    style.id = 'inv-log-styles';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
 
-    /* toolbar export: mengambang kanan-atas, tidak mem-push konten */
-    .log-toolbar {
-      position: absolute;
-      top: 17px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      z-index: 1;
-    }
-    #btnInventoryActivityExport { padding: .25rem .5rem; }
-
-    /* list catatan: kalau >5 item jadi scroll */
-    #log.scroll {
-      max-height: 240px;
-      overflow-y: auto;
-      padding-right: 6px;
-    }
-    #log.scroll::-webkit-scrollbar { width: 6px; }
-    #log.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 3px; }
-  `;
-  const style = document.createElement('style');
-  style.id = 'inv-log-styles';
-  style.textContent = css;
-  document.head.appendChild(style);
-}
-
-  // buat toolbar export CSV di atas list catatan (kalau belum ada)
   function ensureLogToolbar(){
-  const ul = document.getElementById('log');
-  if (!ul) return;
+    const ul = document.getElementById('log');
+    if (!ul) return;
 
-  // posisikan di dalam card-body (kanan-atas)
-  const host = ul.closest('.card-body') || ul.parentElement;
-  if (!host) return;
-  host.classList.add('log-host');
+    const host = ul.closest('.card-body') || ul.parentElement;
+    if (!host) return;
+    host.classList.add('log-host');
 
-  // cari toolbar kalau sudah ada
-  let toolbar = host.querySelector('.log-toolbar');
-  if (!toolbar){
-    toolbar = document.createElement('div');
-    toolbar.className = 'log-toolbar';
-    host.insertBefore(toolbar, host.firstChild); // paling atas dalam card body
+    let toolbar = host.querySelector('.log-toolbar');
+    if (!toolbar){
+      toolbar = document.createElement('div');
+      toolbar.className = 'log-toolbar';
+      host.insertBefore(toolbar, host.firstChild);
+    }
+
+    let btn = document.getElementById('btnInventoryActivityExport');
+    if (!btn){
+      btn = document.createElement('button');
+      btn.id = 'btnInventoryActivityExport';
+      btn.type = 'button';
+      btn.className = 'btn btn-sm btn-outline-secondary';
+      btn.textContent = 'EXPORT CSV';
+      btn.addEventListener('click', exportActivityCSV);
+      toolbar.appendChild(btn);
+    }
   }
 
-  // tombol export (sekali saja)
-  let btn = document.getElementById('btnInventoryActivityExport');
-  if (!btn){
-    btn = document.createElement('button');
-    btn.id = 'btnInventoryActivityExport';
-    btn.type = 'button';
-    btn.className = 'btn btn-sm btn-outline-secondary';
-    btn.textContent = 'EXPORT CSV';
-    btn.addEventListener('click', exportActivityCSV);
-    toolbar.appendChild(btn);
-  }
-}
-
-
-  // tampilan catatan di panel “CATATAN”
   function renderActivityList(){
     injectStylesOnce();
     ensureLogToolbar();
@@ -133,12 +157,11 @@
     const ul = document.getElementById('log');
     if (!ul) return;
 
-    const list = invActivities();      // hanya inventory
+    const list = invActivities();
     ul.innerHTML = '';
-    // toggle scrollbar bila > 5
     ul.classList.toggle('scroll', list.length > 5);
 
-    const show = list.slice(0, 200);   // render max 200 item
+    const show = list.slice(0, 200);
     for (const a of show){
       const when = new Date(a.ts).toLocaleString('id-ID');
       const qty  = (a.qty_change===0 || a.qty_change)
@@ -151,11 +174,10 @@
     }
   }
 
-  // ========= Export CSV untuk Activity harian dari halaman Inventory =========
   function exportActivityCSV(){
     const list = invActivities();
     const rows = [['datetime','action','item_name','qty_change','amount','note']];
-    for (const a of list.slice().reverse()){ // paling lama → paling baru
+    for (const a of list.slice().reverse()){
       rows.push([
         new Date(a.ts).toISOString(),
         a.action,
@@ -172,7 +194,6 @@
     a.click();
   }
 
-  // ========= Ping Dashboard (supaya donut & activity ikut update tanpa reload) =========
   function pingDashboard(){
     localStorage.setItem('activity_ping', Date.now().toString());
   }
@@ -181,19 +202,17 @@
   function upsert(item){
     const list = loadItems();
     if(!item.id){
-      // create
       item.id = Date.now();
       list.push(item);
       pushActivity({ action:'create', item_name:item.name, qty_change:Number(item.stock||0), note:`SKU: ${item.sku||'-'}` });
     } else {
-      // update
       const i=list.findIndex(x=>x.id===item.id);
       if(i>=0) list[i]=item;
       pushActivity({ action:'update', item_name:item.name, note:`SKU: ${item.sku||'-'}` });
     }
     saveItems(list);
     render();
-    renderActivityList(); // langsung update panel
+    renderActivityList();
   }
 
   function delItem(id){
@@ -225,7 +244,6 @@
     const it=getById(id); const f=$('#formAdjust'); f.reset();
     f.querySelector('[name=id]').value=id;
     f.querySelector('[name=name]').value=it?.name || '';
-    // Prefill biaya jika ada default_cost dan field cost tersedia
     const costEl = f.querySelector('[name=cost]');
     if (costEl && it && typeof it.default_cost !== 'undefined') {
       costEl.value = Number(it.default_cost) || 0;
@@ -233,7 +251,6 @@
     new bootstrap.Modal('#modalAdjust').show();
   }
 
-  // ========= Sorting & Rendering =========
   function sortItems(items){
     if(!SORT.key) return items;
     return [...items].sort((a,b)=>{
@@ -252,7 +269,6 @@
     let items = loadItems();
     let low=0, out=0;
 
-    // stats & filter
     items.forEach(it => { const st=statusOf(it); if(st==='low') low++; if(st==='out') out++; });
     items = items.filter(it=>{
       const st=statusOf(it);
@@ -262,10 +278,8 @@
       return passF && passQ;
     });
 
-    // sorting
     items = sortItems(items);
 
-    // rows
     for(const it of items){
       const st = statusOf(it);
       const pct = Math.max(0, Math.min(100, it.min>0 ? Math.round((it.stock/it.min)*100) : 100));
@@ -297,24 +311,20 @@
       body.appendChild(tr);
     }
 
-    // ringkasan
     const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
     set('statTotal', loadItems().length);
     set('statLow', low);
     set('statOut', out);
   }
 
-  // ========= Events =========
   document.addEventListener('DOMContentLoaded', () => {
     injectStylesOnce();
 
-    // tambah/edit
     $('#formItem')?.addEventListener('submit', e=>{
       e.preventDefault();
       const fd=new FormData(e.target); const item=Object.fromEntries(fd.entries());
       item.id = item.id? Number(item.id): undefined;
       item.min = Number(item.min||0); item.stock = Number(item.stock||0);
-      // simpan default_cost kalau ada field-nya
       if (typeof item.default_cost !== 'undefined' && item.default_cost !== '') {
         item.default_cost = Number(item.default_cost);
       } else {
@@ -325,22 +335,17 @@
       e.target.reset();
     });
 
-    // adjust
     $('#formAdjust')?.addEventListener('submit', e=>{
       e.preventDefault();
       const fd=new FormData(e.target);
       const id=Number(fd.get('id')); const delta=Number(fd.get('delta')||0);
       const reason = fd.get('reason') || 'adjust';
-      const cost   = Number(fd.get('cost')||0); // OPSIONAL biaya restock
+      const cost   = Number(fd.get('cost')||0);
       const it=getById(id);
       it.stock=Math.max(0, Number(it.stock||0)+delta);
-      // simpan perubahan + activity adjust stok
       pushActivity({ action:'adjust', item_name:it.name, qty_change: delta, note:reason });
 
-      // ==== Tambahan: catat pengeluaran agar Dashboard naik ====
-      // Hanya saat restock (delta > 0) dan ada biaya (cost > 0)
       if (delta > 0 && cost > 0){
-        // 1) Activity khusus expense (tampil juga di CATATAN)
         pushActivity({
           action:'expense',
           item_name: it.name,
@@ -349,30 +354,26 @@
           meta: { amount: cost }
         });
 
-        // 2) Simpan TRANSACTION agar dashboard baca (type 'inventory' dihitung sebagai expense)
         const tx = loadTransactions();
         tx.push({
           id: 'tx_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
-          type: 'inventory',                 // dashboard treat as pengeluaran
+          type: 'inventory',
           amount: Number(cost)||0,
           datetime: new Date().toISOString(),
           note: `Restock ${it.name} (${delta})`
         });
         saveTransactions(tx);
       }
-      // =====================================
 
       upsert(it);
       bootstrap.Modal.getInstance(document.getElementById('modalAdjust')).hide();
     });
 
-    // search & filter
     $('#q')?.addEventListener('input', render);
     $$('.btn-group [data-filter]').forEach(btn=>{
       btn.onclick=()=>{ $$('.btn-group [data-filter]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); };
     });
 
-    // sort
     $$('.btn-group [data-sort]').forEach(btn=>{
       btn.onclick=()=>{
         const key=btn.dataset.sort;
@@ -381,10 +382,14 @@
       };
     });
 
-    // export/import CSV items
     $('#btnExport')?.addEventListener('click', ()=>{
       const rows=[['name','sku','category','stock','min','unit','note','default_cost']];
-      for(const it of loadItems()){ rows.push([it.name,it.sku||'',it.category||'',it.stock||0,it.min||0,it.unit||'pcs',it.note||'', (typeof it.default_cost!=='undefined'?it.default_cost:'')]); }
+      for(const it of loadItems()){
+        rows.push([
+          it.name,it.sku||'',it.category||'',it.stock||0,it.min||0,it.unit||'pcs',it.note||'',
+          (typeof it.default_cost!=='undefined'?it.default_cost:'')
+        ]);
+      }
       const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
       const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='inventory.csv'; a.click();
     });
@@ -397,22 +402,27 @@
         for(const line of lines){
           const cols=line.match(/("([^"]|"")*"|[^,]+)/g)?.map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"'))||[];
           const [name,sku,category,stock,min,unit,note,default_cost]=cols;
-          list.push({id:Date.now()+Math.random(), name, sku, category, stock:Number(stock||0), min:Number(min||0), unit:unit||'pcs', note, ...(default_cost?{default_cost:Number(default_cost)}:{})});
+          list.push({
+            id:Date.now()+Math.random(),
+            name, sku, category,
+            stock:Number(stock||0),
+            min:Number(min||0),
+            unit:unit||'pcs',
+            note,
+            ...(default_cost?{default_cost:Number(default_cost)}:{})
+          });
         }
         saveItems(list); render();
       };
       i.click();
     });
 
-    // tombol export activity (kalau kamu sudah taruh di HTML)
     document.getElementById('btnInventoryActivityExport')?.addEventListener('click', exportActivityCSV);
 
-    // render awal
     render();
     renderActivityList();
   });
 
-  // expose untuk tombol di HTML
   window.invOpenItem   = openItem;
   window.invOpenAdjust = openAdjust;
   window.invDelItem    = delItem;

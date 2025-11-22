@@ -64,7 +64,7 @@ class InventoryController extends Controller
         return back()->with('ok', 'Stock disesuaikan');
     }
 
-    // ====== JSON UNTUK DASHBOARD ======
+    // ====== JSON UNTUK DASHBOARD (LAMA, BIARKAN) ======
     public function summary()
     {
         $items = Item::select('stock', 'min_stock')->get();
@@ -84,15 +84,69 @@ class InventoryController extends Controller
         ]);
     }
 
- public function json()
-{
-    // pakai model Item yang sudah di-use di atas
-    $items = Item::all();
+    // dipakai route inventory.json → dashboard donut
+    public function json()
+    {
+        // pakai model Item yang sudah di-use di atas
+        $items = Item::all();
 
-    return response()->json([
-        'status' => 'ok',
-        'data'   => $items,
-    ]);
-}
+        return response()->json([
+            'status' => 'ok',
+            'data'   => $items,
+        ]);
+    }
 
+    // =========================================
+    // ============= BAGIAN API BARU ===========
+    // =========================================
+
+    // GET /api/v1/inventory
+    // Ambil data inventory dari DB dalam bentuk JSON (buat Postman / mobile / dsb)
+    public function apiIndex()
+    {
+        $items = Item::orderBy('name')->get();
+
+        return response()->json([
+            'status' => 'ok',
+            'data'   => $items,
+        ]);
+    }
+
+    // POST /api/v1/inventory/sync
+    // Terima isi localStorage (array items) lalu upsert ke DB berdasarkan SKU
+    public function apiSync(Request $request)
+    {
+        $payload = $request->validate([
+            'items'                => ['required', 'array'],
+            'items.*.name'         => ['required', 'string', 'max:150'],
+            'items.*.sku'          => ['required', 'string', 'max:100'],
+            'items.*.category'     => ['required', 'string', 'max:100'],
+            'items.*.stock'        => ['required', 'integer', 'min:0'],
+            'items.*.min'          => ['required', 'integer', 'min:0'],
+            'items.*.unit'         => ['nullable', 'string', 'max:20'],
+            'items.*.note'         => ['nullable', 'string'],
+            'items.*.default_cost' => ['nullable', 'numeric'], // kalau ada di localStorage
+        ]);
+
+        $items = $payload['items'];
+
+        foreach ($items as $data) {
+            Item::updateOrCreate(
+                ['sku' => $data['sku']], // kunci unik
+                [
+                    'name'      => $data['name'],
+                    'category'  => $data['category'],
+                    'stock'     => $data['stock'],
+                    'min_stock' => $data['min'],           // map dari "min" localStorage
+                    'unit'      => $data['unit'] ?? 'pcs',
+                    'note'      => $data['note'] ?? null,
+                ]
+            );
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            'synced' => count($items),
+        ]);
+    }
 }
