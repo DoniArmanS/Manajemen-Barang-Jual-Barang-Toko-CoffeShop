@@ -61,6 +61,9 @@ Route::middleware('auth')->group(function () {
         Route::view('/riwayat', 'riwayat.riwayat')->name('riwayat');
     });
 
+
+
+
     // ====== CASHIER ROUTES ======
     Route::middleware('role:cashier')->group(function () {
         Route::view('/kasir', 'kasir.index')->name('cashier');

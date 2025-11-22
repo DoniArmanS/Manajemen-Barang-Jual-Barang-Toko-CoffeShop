@@ -84,8 +84,15 @@ class InventoryController extends Controller
         ]);
     }
 
-    public function json()
-    {
-        return response()->json(Item::orderBy('name')->get());
-    }
+ public function json()
+{
+    // pakai model Item yang sudah di-use di atas
+    $items = Item::all();
+
+    return response()->json([
+        'status' => 'ok',
+        'data'   => $items,
+    ]);
+}
+
 }
