@@ -137,7 +137,7 @@ class InventoryController extends Controller
                     'name'      => $data['name'],
                     'category'  => $data['category'],
                     'stock'     => $data['stock'],
-                    'min_stock' => $data['min'],           // map dari "min" localStorage
+                    'min' => $data['min'],           // map dari "min" localStorage
                     'unit'      => $data['unit'] ?? 'pcs',
                     'note'      => $data['note'] ?? null,
                 ]
